@@ -12,3 +12,7 @@ dist/
 *.log
 *.zip
 .DS_Store
+
+dist-cloudflare/
+.cloudflare/
+.cloud-backup/

@@ -1,0 +1,32 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "imprint-store",
+	"main": "dist-cloudflare/worker/index.js",
+	"compatibility_date": "2026-10-03",
+	"workers_dev": true,
+	"assets": {
+		"directory": "dist-cloudflare/public",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "imprint-db",
+			"database_id": "a8cad2d0-fb18-43ff-bbb3-b6fa6d92bb10",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "imprint-uploads"
+		}
+	],
+	"vars": {
+		"ADMIN_AUTH": "password",
+		"ADMIN_EMAIL": "kienchimto57@gmail.com"
+	}
+}

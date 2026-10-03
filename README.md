@@ -117,13 +117,9 @@ git push
 
 ## 6. GitHub và xuất bản website
 
-GitHub lưu mã nguồn. `localhost` chạy trên máy của bạn. Đưa mã lên GitHub không tự cập nhật website live và không tạo website có backend trên GitHub Pages.
+GitHub lưu mã nguồn; push chưa tự cập nhật website. Xem `CLOUDFLARE.md` để tạo R2, áp dụng database migration, xuất bản bằng Wrangler và đặt mật khẩu quản trị cho hosting riêng.
 
-Backend production hiện là Cloudflare Worker với D1 (database) và R2 (tệp). Muốn chuyển sang tài khoản hosting riêng cần cấu hình các tài nguyên này, migrations, bí mật và phương thức đăng nhập quản trị tương ứng; không thể chỉ đưa thư mục này lên Render rồi bấm chạy Node. File `local-server.mjs` không phải server production.
-
-Bộ export giữ chức năng đăng nhập ChatGPT cho bản hosting hiện tại. Khi chuyển sang Cloudflare riêng, cần thay xác thực quản trị bằng phương thức phù hợp; không tin header `oai-authenticated-user-email` do khách tự gửi. Chưa có cấu hình triển khai Cloudflare riêng trong bộ export này.
-
-Website đang hoạt động tại https://imprint-studio-2026.kienchimto57.chatgpt.site vẫn được giữ nguyên.
+Cấu hình `wrangler.jsonc` đã có database ID của bạn và các binding `DB`, `BUCKET`, `ASSETS`. Build Cloudflare dùng Static Assets cho ảnh/font/video, backend xử lý API và phiên đăng nhập email/mật khẩu. Bản hosting trước vẫn giữ nguyên.
 
 ## 7. Lỗi thường gặp
 
