@@ -1,0 +1,11 @@
+import {sqliteTable,text,integer,index,uniqueIndex,check} from 'drizzle-orm/sqlite-core';
+import {sql} from 'drizzle-orm';
+export const users=sqliteTable('users',{id:text().primaryKey(),email:text().notNull().unique(),name:text().notNull(),salt:text().notNull(),password_hash:text().notNull(),profile:text().notNull().default('{}'),created_at:integer().notNull()});
+export const sessions=sqliteTable('sessions',{hash:text().primaryKey(),user_id:text().notNull().references(()=>users.id,{onDelete:'cascade'}),expires_at:integer().notNull()},t=>[index('sessions_user').on(t.user_id)]);
+export const products=sqliteTable('products',{id:text().primaryKey(),body:text().notNull(),stock:integer().notNull(),revision:integer().notNull().default(1)},t=>[check('stock_nonnegative',sql`${t.stock} >= 0`)]);
+export const settings=sqliteTable('settings',{key:text().primaryKey(),body:text().notNull(),revision:integer().notNull().default(1)});
+export const carts=sqliteTable('carts',{user_id:text().primaryKey().references(()=>users.id,{onDelete:'cascade'}),body:text().notNull(),revision:integer().notNull().default(1)});
+export const designs=sqliteTable('designs',{id:text().primaryKey(),user_id:text().notNull().references(()=>users.id,{onDelete:'cascade'}),body:text().notNull(),updated_at:integer().notNull()},t=>[index('designs_user').on(t.user_id)]);
+export const assets=sqliteTable('assets',{id:text().primaryKey(),owner:text().notNull(),object_key:text().notNull(),type:text().notNull(),size:integer().notNull(),public:integer().notNull().default(0),metadata:text().notNull(),created_at:integer().notNull()},t=>[index('assets_owner').on(t.owner)]);
+export const orders=sqliteTable('orders',{id:text().primaryKey(),user_id:text().notNull().references(()=>users.id),request_key:text().notNull(),body:text().notNull(),status:integer().notNull().default(0),created_at:integer().notNull()},t=>[index('orders_user').on(t.user_id),uniqueIndex('orders_request').on(t.user_id,t.request_key)]);
+export const throttle=sqliteTable('throttle',{key:text().primaryKey(),attempts:integer().notNull(),expires_at:integer().notNull()});
