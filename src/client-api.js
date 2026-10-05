@@ -2491,7 +2491,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 })();
 
-/* IMPRINT_HOME_SINGLE_VIDEO_V3 */
+/* IMPRINT_HOME_SINGLE_VIDEO_V4 */
 (function(){
     function cinematicHomeFilm(){
         const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
@@ -2522,6 +2522,50 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             media.style.display='block';
         }
 
+        if(media instanceof HTMLVideoElement){
+            media.muted=true;
+            media.defaultMuted=true;
+            media.autoplay=true;
+            media.loop=true;
+            media.playsInline=true;
+            media.preload='auto';
+
+            media.setAttribute('muted','');
+            media.setAttribute('autoplay','');
+            media.setAttribute('loop','');
+            media.setAttribute('playsinline','');
+            media.removeAttribute('controls');
+
+            const playFilm=()=>{
+                const attempt=media.play();
+                if(attempt && typeof attempt.catch==='function'){
+                    attempt.catch(()=>{});
+                }
+            };
+
+            first.onmouseenter=()=>{
+                media.pause();
+                first.classList.add('is-paused-by-hover');
+            };
+
+            first.onmouseleave=()=>{
+                first.classList.remove('is-paused-by-hover');
+                playFilm();
+            };
+
+            first.onfocusin=()=>{
+                media.pause();
+                first.classList.add('is-paused-by-hover');
+            };
+
+            first.onfocusout=()=>{
+                first.classList.remove('is-paused-by-hover');
+                playFilm();
+            };
+
+            playFilm();
+        }
+
         // The rotating photo fan on the right is intentionally preserved.
         const photos=section.querySelector('.collection-photos');
         if(photos){
@@ -2529,11 +2573,14 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         }
     }
 
-    const oldStyle=document.getElementById('imprint-home-single-video-v2-style');
-    if(oldStyle) oldStyle.remove();
+    const oldV2=document.getElementById('imprint-home-single-video-v2-style');
+    if(oldV2) oldV2.remove();
+
+    const oldV3=document.getElementById('imprint-home-single-video-v3-style');
+    if(oldV3) oldV3.remove();
 
     const style=document.createElement('style');
-    style.id='imprint-home-single-video-v3-style';
+    style.id='imprint-home-single-video-v4-style';
     style.textContent=`
         #collections .collection-films > article:not(:first-child){
             display:none !important;
@@ -2615,9 +2662,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     document.head.appendChild(style);
 
     if(typeof home==='function'){
-        const baseHomeSingleVideoV3=home;
+        const baseHomeSingleVideoV4=home;
         home=function(){
-            const result=baseHomeSingleVideoV3.apply(this,arguments);
+            const result=baseHomeSingleVideoV4.apply(this,arguments);
             requestAnimationFrame(cinematicHomeFilm);
             return result;
         };
