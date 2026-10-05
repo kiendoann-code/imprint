@@ -1,0 +1,3 @@
+import fs from 'node:fs';
+import {renderErrorDocument} from '../src/error-page.mjs';
+export function prepareAdminBuild(target){const dir=target==='cloudflare'?'dist-cloudflare/worker':'dist/server';fs.mkdirSync(dir,{recursive:true});for(const name of ['admin-sales.mjs','error-page.mjs'])fs.copyFileSync('src/'+name,dir+'/'+name);if(target==='cloudflare'){fs.mkdirSync('dist-cloudflare/public/static',{recursive:true});fs.copyFileSync('src/imprint-error.png','dist-cloudflare/public/static/imprint-error.png');fs.writeFileSync('dist-cloudflare/public/404.html',renderErrorDocument('404'));fs.writeFileSync('dist-cloudflare/public/error.html',renderErrorDocument('service'));}}
