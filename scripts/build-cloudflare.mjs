@@ -2,7 +2,6 @@ import {build} from 'esbuild';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import {applyDesignAreaPatch} from './apply-design-area-patch.mjs';
 
 const output='dist-cloudflare';
 fs.rmSync(output,{recursive:true,force:true});
@@ -17,7 +16,7 @@ function extract(data){
   fs.writeFileSync(output+'/public'+url,Buffer.from(m[2],'base64'));
   assets.add(url);return url;
 }
-let html=applyDesignAreaPatch(fs.readFileSync('src/index.html','utf8')).replace(/data:[\w/+.-]+;base64,[\w+/=]+/g,extract);
+let html=fs.readFileSync('src/index.html','utf8').replace(/data:[\w/+.-]+;base64,[\w+/=]+/g,extract);
 const seed=JSON.parse(fs.readFileSync('src/seed.json','utf8'));
 for(const p of seed.products)p.img=extract(p.img);
 for(const c of seed.collections)c.src=extract(c.src);
