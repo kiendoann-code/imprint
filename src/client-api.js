@@ -2491,9 +2491,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 })();
 
-/* IMPRINT_HOME_SINGLE_VIDEO_V2 */
+/* IMPRINT_HOME_SINGLE_VIDEO_V3 */
 (function(){
-    function keepOneFilm(){
+    function cinematicHomeFilm(){
         const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
         if(page!=='home') return;
 
@@ -2511,6 +2511,8 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         const first=articles[0];
         if(!first) return;
 
+        first.classList.add('imprint-home-film-cinematic');
+
         const media=first.querySelector('video,iframe');
         if(media){
             media.style.width='100%';
@@ -2520,22 +2522,38 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             media.style.display='block';
         }
 
-        // Keep the rotating photo carousel on the right untouched.
+        // The rotating photo fan on the right is intentionally preserved.
         const photos=section.querySelector('.collection-photos');
         if(photos){
             photos.hidden=false;
         }
     }
 
+    const oldStyle=document.getElementById('imprint-home-single-video-v2-style');
+    if(oldStyle) oldStyle.remove();
+
     const style=document.createElement('style');
-    style.id='imprint-home-single-video-v2-style';
+    style.id='imprint-home-single-video-v3-style';
     style.textContent=`
         #collections .collection-films > article:not(:first-child){
             display:none !important;
         }
-        #collections .collection-films > article:first-child{
-            margin:0 !important;
+
+        #collections .collection-films{
+            position:relative;
+            overflow:visible;
         }
+
+        #collections .collection-films > article:first-child{
+            position:relative;
+            margin:0 !important;
+            overflow:hidden;
+            border-radius:22px;
+            background:#111;
+            isolation:isolate;
+            box-shadow:0 22px 60px rgba(55,42,34,.10);
+        }
+
         #collections .collection-films > article:first-child video,
         #collections .collection-films > article:first-child iframe{
             width:100% !important;
@@ -2543,21 +2561,69 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             height:auto !important;
             display:block !important;
             object-fit:cover !important;
-            border-radius:18px;
+            border:0 !important;
+            border-radius:22px;
+        }
+
+        /* Cinematic fade: the film dissolves into the page toward the photo fan. */
+        #collections .collection-films > article:first-child::after{
+            content:"";
+            position:absolute;
+            inset:0;
+            z-index:3;
+            pointer-events:none;
+            background:
+                linear-gradient(
+                    90deg,
+                    rgba(250,247,242,0) 0%,
+                    rgba(250,247,242,0) 58%,
+                    rgba(250,247,242,.16) 70%,
+                    rgba(250,247,242,.62) 86%,
+                    #faf7f2 100%
+                ),
+                linear-gradient(
+                    180deg,
+                    rgba(250,247,242,0) 72%,
+                    rgba(250,247,242,.18) 88%,
+                    rgba(250,247,242,.46) 100%
+                );
+        }
+
+        #collections .collection-photos{
+            position:relative;
+            z-index:5;
+        }
+
+        @media(max-width:900px){
+            #collections .collection-films > article:first-child,
+            #collections .collection-films > article:first-child video,
+            #collections .collection-films > article:first-child iframe{
+                border-radius:16px;
+            }
+
+            #collections .collection-films > article:first-child::after{
+                background:
+                    linear-gradient(
+                        180deg,
+                        rgba(250,247,242,0) 70%,
+                        rgba(250,247,242,.12) 84%,
+                        #faf7f2 100%
+                    );
+            }
         }
     `;
     document.head.appendChild(style);
 
     if(typeof home==='function'){
-        const baseHomeSingleVideoV2=home;
+        const baseHomeSingleVideoV3=home;
         home=function(){
-            const result=baseHomeSingleVideoV2.apply(this,arguments);
-            requestAnimationFrame(keepOneFilm);
+            const result=baseHomeSingleVideoV3.apply(this,arguments);
+            requestAnimationFrame(cinematicHomeFilm);
             return result;
         };
     }
 
     if((location.hash||'#home').startsWith('#home')){
-        requestAnimationFrame(keepOneFilm);
+        requestAnimationFrame(cinematicHomeFilm);
     }
 })();
