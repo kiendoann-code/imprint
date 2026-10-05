@@ -1808,7 +1808,10 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             ) ||
             notices[0];
 
-        if(target){
+        if(
+            target &&
+            target.textContent !== ADMIN_SERVER_NOTICE
+        ){
             target.textContent =
                 ADMIN_SERVER_NOTICE;
         }
