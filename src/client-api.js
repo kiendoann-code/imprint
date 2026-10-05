@@ -2497,7 +2497,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 })();
 
-/* IMPRINT_HOME_SINGLE_VIDEO_V4 */
+/* IMPRINT_HOME_SINGLE_VIDEO_V5 */
 (function(){
     function cinematicHomeFilm(){
         const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
@@ -2572,21 +2572,22 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             playFilm();
         }
 
-        // The rotating photo fan on the right is intentionally preserved.
         const photos=section.querySelector('.collection-photos');
         if(photos){
             photos.hidden=false;
         }
     }
 
-    const oldV2=document.getElementById('imprint-home-single-video-v2-style');
-    if(oldV2) oldV2.remove();
-
-    const oldV3=document.getElementById('imprint-home-single-video-v3-style');
-    if(oldV3) oldV3.remove();
+    for(const id of [
+        'imprint-home-single-video-v2-style',
+        'imprint-home-single-video-v3-style',
+        'imprint-home-single-video-v4-style'
+    ]){
+        document.getElementById(id)?.remove();
+    }
 
     const style=document.createElement('style');
-    style.id='imprint-home-single-video-v4-style';
+    style.id='imprint-home-single-video-v5-style';
     style.textContent=`
         #collections .collection-films > article:not(:first-child){
             display:none !important;
@@ -2594,17 +2595,21 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
         #collections .collection-films{
             position:relative;
-            overflow:visible;
+            overflow:visible !important;
+            z-index:2;
         }
 
         #collections .collection-films > article:first-child{
             position:relative;
-            margin:0 !important;
+            width:122% !important;
+            max-width:none !important;
+            margin:0 -22% 0 0 !important;
             overflow:hidden;
-            border-radius:22px;
+            border-radius:24px;
             background:#111;
             isolation:isolate;
-            box-shadow:0 22px 60px rgba(55,42,34,.10);
+            box-shadow:0 26px 70px rgba(55,42,34,.13);
+            z-index:2;
         }
 
         #collections .collection-films > article:first-child video,
@@ -2615,10 +2620,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             display:block !important;
             object-fit:cover !important;
             border:0 !important;
-            border-radius:22px;
+            border-radius:24px;
         }
 
-        /* Cinematic fade: the film dissolves into the page toward the photo fan. */
         #collections .collection-films > article:first-child::after{
             content:"";
             position:absolute;
@@ -2629,16 +2633,16 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
                 linear-gradient(
                     90deg,
                     rgba(250,247,242,0) 0%,
-                    rgba(250,247,242,0) 58%,
-                    rgba(250,247,242,.16) 70%,
-                    rgba(250,247,242,.62) 86%,
+                    rgba(250,247,242,0) 60%,
+                    rgba(250,247,242,.13) 72%,
+                    rgba(250,247,242,.55) 88%,
                     #faf7f2 100%
                 ),
                 linear-gradient(
                     180deg,
-                    rgba(250,247,242,0) 72%,
-                    rgba(250,247,242,.18) 88%,
-                    rgba(250,247,242,.46) 100%
+                    rgba(250,247,242,0) 74%,
+                    rgba(250,247,242,.14) 89%,
+                    rgba(250,247,242,.40) 100%
                 );
         }
 
@@ -2647,8 +2651,20 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             z-index:5;
         }
 
+        @media(max-width:1100px){
+            #collections .collection-films > article:first-child{
+                width:114% !important;
+                margin-right:-14% !important;
+            }
+        }
+
         @media(max-width:900px){
-            #collections .collection-films > article:first-child,
+            #collections .collection-films > article:first-child{
+                width:100% !important;
+                margin-right:0 !important;
+                border-radius:16px;
+            }
+
             #collections .collection-films > article:first-child video,
             #collections .collection-films > article:first-child iframe{
                 border-radius:16px;
@@ -2668,9 +2684,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     document.head.appendChild(style);
 
     if(typeof home==='function'){
-        const baseHomeSingleVideoV4=home;
+        const baseHomeSingleVideoV5=home;
         home=function(){
-            const result=baseHomeSingleVideoV4.apply(this,arguments);
+            const result=baseHomeSingleVideoV5.apply(this,arguments);
             requestAnimationFrame(cinematicHomeFilm);
             return result;
         };
