@@ -2497,7 +2497,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 })();
 
-/* IMPRINT_HOME_SINGLE_VIDEO_V5 */
+/* IMPRINT_HOME_SINGLE_VIDEO_V6 */
 (function(){
     function cinematicHomeFilm(){
         const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
@@ -2587,7 +2587,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     }
 
     const style=document.createElement('style');
-    style.id='imprint-home-single-video-v5-style';
+    style.id='imprint-home-single-video-v6-style';
     style.textContent=`
         #collections .collection-films > article:not(:first-child){
             display:none !important;
@@ -2601,9 +2601,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
         #collections .collection-films > article:first-child{
             position:relative;
-            width:122% !important;
+            width:145% !important;
             max-width:none !important;
-            margin:0 -22% 0 0 !important;
+            margin:0 -45% 0 0 !important;
             overflow:hidden;
             border-radius:24px;
             background:#111;
@@ -2648,13 +2648,13 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
         #collections .collection-photos{
             position:relative;
-            z-index:5;
+            z-index:6;
         }
 
         @media(max-width:1100px){
             #collections .collection-films > article:first-child{
-                width:114% !important;
-                margin-right:-14% !important;
+                width:125% !important;
+                margin-right:-25% !important;
             }
         }
 
@@ -2684,9 +2684,9 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     document.head.appendChild(style);
 
     if(typeof home==='function'){
-        const baseHomeSingleVideoV5=home;
+        const baseHomeSingleVideoV6=home;
         home=function(){
-            const result=baseHomeSingleVideoV5.apply(this,arguments);
+            const result=baseHomeSingleVideoV6.apply(this,arguments);
             requestAnimationFrame(cinematicHomeFilm);
             return result;
         };
