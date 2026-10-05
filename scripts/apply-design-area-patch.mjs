@@ -20,7 +20,10 @@ export function applyDesignAreaPatch(html){
     ["'Ưu tiên chữ ngắn hoặc biểu tượng đơn giản.'","'Vùng thiết kế kéo dài từ gần cổ xuống sát gấu áo.'"],
     ["'Hình in đặt ở phần thân trước, tránh đường bo.'","'Có thể thiết kế mặt trước hoặc mặt sau, từ gần cổ xuống sát đường bo gấu.'"],
     ["'Hình in mặt trước; tay áo giữ màu đồng bộ với thân.'","'Có thể thiết kế mặt trước hoặc mặt sau; tay áo giữ màu đồng bộ với thân.'"],
-    ["'Thiết kế được in trên phần thân trước.'","'Có thể thiết kế trên phần thân trước hoặc sau.'"]
+    ["'Thiết kế được in trên phần thân trước.'","'Có thể thiết kế trên phần thân trước hoặc sau.'"],
+    ["hình in nhỏ phía trên túi mang lại điểm nhấn riêng.","vùng thiết kế mở rộng từ gần cổ xuống sát gấu cho cả mặt trước và mặt sau."],
+    ["function printCM(){let g=GARMENTS[typeOf(draftProduct())];return draft.placement.w/g.area.w*g.cm}","function printCM(){let g=GARMENTS[typeOf(draftProduct())];return draft.placement.w/g.area.w*g.cm}function printAreaCM(){let g=GARMENTS[typeOf(draftProduct())];return{w:g.cm,h:g.area.h/g.area.w*g.cm}}"],
+    ["const oldConfirmationV5=confirmation;confirmation=function(p){return oldConfirmationV5(p).replace(`<p>${esc(draft.color)} · ${esc(draft.size)} · ${draft.side}</p>`,`<p>${esc(configText(draft,p))} · ${draft.size} · ${draft.side}</p>`).replace(/Hình in tối đa khoảng [^<]+cm/,`Hình in minh họa khoảng ${printCM().toFixed(1)} × ${printCM().toFixed(1)} cm`)};","const oldConfirmationV5=confirmation;confirmation=function(p){let s=printAreaCM();return oldConfirmationV5(p).replace(`<p>${esc(draft.color)} · ${esc(draft.size)} · ${draft.side}</p>`,`<p>${esc(configText(draft,p))} · ${draft.size} · ${draft.side}</p>`).replace(/Hình in tối đa khoảng [^<]+cm/,`Vùng thiết kế tối đa khoảng ${s.w.toFixed(1)} × ${s.h.toFixed(1)} cm`)};"]
   ];
   for(const [from,to] of changes){
     if(!html.includes(from))throw new Error('ImPrint design-area patch target not found: '+from.slice(0,80));
