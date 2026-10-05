@@ -1,5 +1,5 @@
-import {build} from 'esbuild';import fs from 'node:fs';import crypto from 'node:crypto';import path from 'node:path';import {applyDesignAreaPatch} from './apply-design-area-patch.mjs';
-const base=applyDesignAreaPatch(fs.readFileSync('src/index.html','utf8')),assets={};
+import {build} from 'esbuild';import fs from 'node:fs';import crypto from 'node:crypto';import path from 'node:path';
+const base=fs.readFileSync('src/index.html','utf8'),assets={};
 function extract(data){const m=data.match(/^data:([^;]+);base64,([\w+/=]+)$/);if(!m)return data;const ext={'image/png':'png','image/webp':'webp','image/jpeg':'jpg','font/woff2':'woff2','font/woff':'woff','video/mp4':'mp4'}[m[1]]||'bin',name='/static/'+crypto.createHash('sha256').update(data).digest('hex')+'.'+ext;assets[name]={type:m[1],base64:m[2]};return name}
 let html=base.replace(/data:[\w/+.-]+;base64,[\w+/=]+/g,extract);
 const seed=JSON.parse(fs.readFileSync('src/seed.json','utf8'));for(const p of seed.products)p.img=extract(p.img);for(const c of seed.collections)c.src=extract(c.src);
