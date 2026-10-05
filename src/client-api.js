@@ -2490,3 +2490,127 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     );
 
 })();
+
+/* IMPRINT_HOME_SINGLE_VIDEO_V1 */
+(function(){
+    function homeSingleVideo(){
+        const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
+        if(page!=='home') return;
+
+        const norm=v=>String(v||'')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g,'')
+            .replace(/đ/g,'d')
+            .replace(/Đ/g,'D')
+            .toLowerCase()
+            .trim();
+
+        const heading=[...app.querySelectorAll('h1,h2,h3')]
+            .find(el=>norm(el.textContent)==='bo suu tap');
+
+        if(!heading) return;
+
+        const section=heading.closest('section');
+        if(!section) return;
+
+        let items=[];
+        try{
+            items=typeof collectionItems==='function'
+                ? (collectionItems()||[])
+                : [];
+        }catch{}
+
+        const media=items.find(x=>x && (x.kind==='video'||x.kind==='youtube'));
+        if(!media) return;
+
+        if(section.classList.contains('imprint-home-single-video')) return;
+        section.classList.add('imprint-home-single-video');
+
+        const head=document.createElement('div');
+        head.className='imprint-home-single-video-head';
+        head.innerHTML='<h2>Bộ sưu tập</h2><a href="#shop">Chọn áo của bạn ↗</a>';
+
+        const frame=document.createElement('div');
+        frame.className='imprint-home-single-video-frame';
+
+        if(media.kind==='youtube'){
+            const iframe=document.createElement('iframe');
+            iframe.src='https://www.youtube-nocookie.com/embed/'+encodeURIComponent(media.src);
+            iframe.loading='lazy';
+            iframe.allowFullscreen=true;
+            iframe.title=media.title||'ImPrint video';
+            frame.appendChild(iframe);
+        }else{
+            const video=document.createElement('video');
+            video.src=media.src;
+            video.controls=true;
+            video.playsInline=true;
+            video.preload='metadata';
+            video.setAttribute('aria-label',media.title||'ImPrint video');
+            frame.appendChild(video);
+        }
+
+        section.replaceChildren(head,frame);
+    }
+
+    const style=document.createElement('style');
+    style.id='imprint-home-single-video-style';
+    style.textContent=`
+        .imprint-home-single-video{
+            display:block !important;
+            width:100%;
+        }
+        .imprint-home-single-video-head{
+            display:flex;
+            align-items:flex-end;
+            justify-content:space-between;
+            gap:24px;
+            margin-bottom:28px;
+        }
+        .imprint-home-single-video-head h2{
+            margin:0;
+        }
+        .imprint-home-single-video-head a{
+            white-space:nowrap;
+            text-decoration:none;
+        }
+        .imprint-home-single-video-frame{
+            width:100%;
+            aspect-ratio:16/9;
+            overflow:hidden;
+            border-radius:18px;
+            background:#111;
+        }
+        .imprint-home-single-video-frame video,
+        .imprint-home-single-video-frame iframe{
+            width:100%;
+            height:100%;
+            display:block;
+            border:0;
+            object-fit:cover;
+        }
+        @media(max-width:760px){
+            .imprint-home-single-video-head{
+                align-items:center;
+                margin-bottom:18px;
+            }
+            .imprint-home-single-video-frame{
+                border-radius:12px;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    if(typeof home==='function'){
+        const baseHomeSingleVideo=home;
+        home=function(){
+            const result=baseHomeSingleVideo.apply(this,arguments);
+            requestAnimationFrame(homeSingleVideo);
+            return result;
+        };
+    }
+
+    if((location.hash||'#home').startsWith('#home')){
+        requestAnimationFrame(homeSingleVideo);
+    }
+})();
