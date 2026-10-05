@@ -2,7 +2,7 @@ export function applyDesignAreaPatch(html){
   const changes=[
     [
       "const GARMENTS={tee:{label:'Áo thun',area:{x:185,y:170,w:230,h:270},cm:28},tank:{label:'Áo ba lỗ',area:{x:210,y:170,w:180,h:230},cm:23},baby:{label:'Baby tee',area:{x:213,y:150,w:174,h:155},cm:22},sweater:{label:'Sweater',area:{x:190,y:165,w:220,h:245},cm:28},longsleeve:{label:'Áo thun dài tay',area:{x:190,y:170,w:220,h:240},cm:28},hoodie:{label:'Hoodie',area:{x:225,y:257,w:150,h:48},cm:24},raglan:{label:'Raglan',area:{x:204,y:165,w:192,h:230},cm:26}};",
-      "const GARMENTS={tee:{label:'Áo thun',area:{x:160,y:112,w:280,h:405},cm:28},tank:{label:'Áo ba lỗ',area:{x:195,y:118,w:210,h:378},cm:23},baby:{label:'Baby tee',area:{x:198,y:112,w:204,h:295},cm:22},sweater:{label:'Sweater',area:{x:165,y:112,w:270,h:404},cm:28},longsleeve:{label:'Áo thun dài tay',area:{x:165,y:112,w:270,h:404},cm:28},hoodie:{label:'Hoodie',area:{x:185,y:128,w:230,h:368},cm:24},raglan:{label:'Raglan',area:{x:180,y:112,w:240,h:398},cm:26}};"
+      "const GARMENTS={tee:{label:'Áo thun',area:{x:145,y:72,w:310,h:458},cm:28},tank:{label:'Áo ba lỗ',area:{x:185,y:82,w:230,h:432},cm:23},baby:{label:'Baby tee',area:{x:190,y:82,w:220,h:338},cm:22},sweater:{label:'Sweater',area:{x:150,y:76,w:300,h:454},cm:28},longsleeve:{label:'Áo thun dài tay',area:{x:150,y:76,w:300,h:454},cm:28},hoodie:{label:'Hoodie',area:{x:175,y:108,w:250,h:408},cm:24},raglan:{label:'Raglan',area:{x:168,y:78,w:264,h:444},cm:26}};"
     ],
     [
       "function fitPlacement(d,p){let a=GARMENTS[typeOf(p)].area;d.placement={x:a.x+a.w/2,y:a.y+a.h/2,w:Math.min(a.w,a.h)*.95,rotation:0}}",
@@ -14,7 +14,7 @@ export function applyDesignAreaPatch(html){
     ],
     [
       "let note=$('.mock-note');note.innerHTML=(t==='hoodie'?'Vùng in nhỏ phía trên túi, tránh dây mũ. ':t==='baby'?'Baby tee dành cho nữ. ':t==='raglan'?'Phối riêng màu thân và tay áo. ':'')+'Mockup tạo bằng AI; màu sắc là mô phỏng.<br>'+(t==='tee'?'Có ảnh mẫu nam/nữ theo size.':'Ảnh mẫu dùng chung để xem phom; size chọn được lưu trong đơn.')};",
-      "let note=$('.mock-note');note.innerHTML=(t==='baby'?'Baby tee dành cho nữ. ':t==='raglan'?'Phối riêng màu thân và tay áo. ':'')+'Vùng thiết kế mở rộng từ gần cổ xuống sát gấu áo ở cả mặt trước và mặt sau.<br>Mockup tạo bằng AI; màu sắc là mô phỏng. '+(t==='tee'?'Có ảnh mẫu nam/nữ theo size.':'Ảnh mẫu dùng chung để xem phom; size chọn được lưu trong đơn.')};"
+      "let note=$('.mock-note');note.innerHTML=(t==='baby'?'Baby tee dành cho nữ. ':t==='raglan'?'Phối riêng màu thân và tay áo. ':'')+'Vùng thiết kế full thân: bắt đầu ngay dưới gáy/cổ áo và kéo xuống gần sát gấu ở cả mặt trước và mặt sau.<br>Mockup tạo bằng AI; màu sắc là mô phỏng. '+(t==='tee'?'Có ảnh mẫu nam/nữ theo size.':'Ảnh mẫu dùng chung để xem phom; size chọn được lưu trong đơn.')};"
     ],
     ["'Vùng in nhỏ được đặt tránh dây mũ và miệng túi.'","'Có thể thiết kế mặt trước hoặc mặt sau trên vùng thân áo mở rộng.'"],
     ["'Ưu tiên chữ ngắn hoặc biểu tượng đơn giản.'","'Vùng thiết kế kéo dài từ gần cổ xuống sát gấu áo.'"],
