@@ -2491,126 +2491,73 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 })();
 
-/* IMPRINT_HOME_SINGLE_VIDEO_V1 */
+/* IMPRINT_HOME_SINGLE_VIDEO_V2 */
 (function(){
-    function homeSingleVideo(){
+    function keepOneFilm(){
         const page=(location.hash||'#home').slice(1).split('/')[0]||'home';
         if(page!=='home') return;
 
-        const norm=v=>String(v||'')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g,'')
-            .replace(/đ/g,'d')
-            .replace(/Đ/g,'D')
-            .toLowerCase()
-            .trim();
-
-        const heading=[...app.querySelectorAll('h1,h2,h3')]
-            .find(el=>norm(el.textContent)==='bo suu tap');
-
-        if(!heading) return;
-
-        const section=heading.closest('section');
+        const section=document.querySelector('#collections');
         if(!section) return;
 
-        let items=[];
-        try{
-            items=typeof collectionItems==='function'
-                ? (collectionItems()||[])
-                : [];
-        }catch{}
+        const films=section.querySelector('.collection-films');
+        if(!films) return;
 
-        const media=items.find(x=>x && (x.kind==='video'||x.kind==='youtube'));
-        if(!media) return;
+        const articles=[...films.querySelectorAll(':scope > article')];
+        articles.forEach((article,index)=>{
+            article.hidden=index!==0;
+        });
 
-        if(section.classList.contains('imprint-home-single-video')) return;
-        section.classList.add('imprint-home-single-video');
+        const first=articles[0];
+        if(!first) return;
 
-        const head=document.createElement('div');
-        head.className='imprint-home-single-video-head';
-        head.innerHTML='<h2>Bộ sưu tập</h2><a href="#shop">Chọn áo của bạn ↗</a>';
-
-        const frame=document.createElement('div');
-        frame.className='imprint-home-single-video-frame';
-
-        if(media.kind==='youtube'){
-            const iframe=document.createElement('iframe');
-            iframe.src='https://www.youtube-nocookie.com/embed/'+encodeURIComponent(media.src);
-            iframe.loading='lazy';
-            iframe.allowFullscreen=true;
-            iframe.title=media.title||'ImPrint video';
-            frame.appendChild(iframe);
-        }else{
-            const video=document.createElement('video');
-            video.src=media.src;
-            video.controls=true;
-            video.playsInline=true;
-            video.preload='metadata';
-            video.setAttribute('aria-label',media.title||'ImPrint video');
-            frame.appendChild(video);
+        const media=first.querySelector('video,iframe');
+        if(media){
+            media.style.width='100%';
+            media.style.aspectRatio='16 / 9';
+            media.style.height='auto';
+            media.style.objectFit='cover';
+            media.style.display='block';
         }
 
-        section.replaceChildren(head,frame);
+        // Keep the rotating photo carousel on the right untouched.
+        const photos=section.querySelector('.collection-photos');
+        if(photos){
+            photos.hidden=false;
+        }
     }
 
     const style=document.createElement('style');
-    style.id='imprint-home-single-video-style';
+    style.id='imprint-home-single-video-v2-style';
     style.textContent=`
-        .imprint-home-single-video{
+        #collections .collection-films > article:not(:first-child){
+            display:none !important;
+        }
+        #collections .collection-films > article:first-child{
+            margin:0 !important;
+        }
+        #collections .collection-films > article:first-child video,
+        #collections .collection-films > article:first-child iframe{
+            width:100% !important;
+            aspect-ratio:16/9 !important;
+            height:auto !important;
             display:block !important;
-            width:100%;
-        }
-        .imprint-home-single-video-head{
-            display:flex;
-            align-items:flex-end;
-            justify-content:space-between;
-            gap:24px;
-            margin-bottom:28px;
-        }
-        .imprint-home-single-video-head h2{
-            margin:0;
-        }
-        .imprint-home-single-video-head a{
-            white-space:nowrap;
-            text-decoration:none;
-        }
-        .imprint-home-single-video-frame{
-            width:100%;
-            aspect-ratio:16/9;
-            overflow:hidden;
+            object-fit:cover !important;
             border-radius:18px;
-            background:#111;
-        }
-        .imprint-home-single-video-frame video,
-        .imprint-home-single-video-frame iframe{
-            width:100%;
-            height:100%;
-            display:block;
-            border:0;
-            object-fit:cover;
-        }
-        @media(max-width:760px){
-            .imprint-home-single-video-head{
-                align-items:center;
-                margin-bottom:18px;
-            }
-            .imprint-home-single-video-frame{
-                border-radius:12px;
-            }
         }
     `;
     document.head.appendChild(style);
 
     if(typeof home==='function'){
-        const baseHomeSingleVideo=home;
+        const baseHomeSingleVideoV2=home;
         home=function(){
-            const result=baseHomeSingleVideo.apply(this,arguments);
-            requestAnimationFrame(homeSingleVideo);
+            const result=baseHomeSingleVideoV2.apply(this,arguments);
+            requestAnimationFrame(keepOneFilm);
             return result;
         };
     }
 
     if((location.hash||'#home').startsWith('#home')){
-        requestAnimationFrame(homeSingleVideo);
+        requestAnimationFrame(keepOneFilm);
     }
 })();
