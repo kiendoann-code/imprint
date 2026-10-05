@@ -2204,16 +2204,16 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         }
 
         .v93-masonry{
-            column-count:4;
-            column-gap:16px;
+            column-count:3;
+            column-gap:24px;
         }
 
         .v93-pin{
             display:inline-block;
             width:100%;
-            margin:0 0 16px;
+            margin:0 0 24px;
             overflow:hidden;
-            border-radius:18px;
+            border-radius:22px;
             break-inside:avoid;
         }
 
@@ -2441,7 +2441,8 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         @media(max-width:1120px){
 
             .v93-masonry{
-                column-count:3;
+                column-count:2;
+                column-gap:18px;
             }
 
             .v93-picks-grid{
@@ -2460,8 +2461,13 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         @media(max-width:760px){
 
             .v93-masonry{
-                column-count:2;
-                column-gap:12px;
+                column-count:1;
+                column-gap:0;
+            }
+
+            .v93-pin{
+                margin-bottom:18px;
+                border-radius:18px;
             }
 
             .v93-picks-head{
