@@ -1,9 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "imprint-store",
+  "name": "imprint",
   "main": "dist-cloudflare/worker/index.js",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
+  "keep_vars": true,
   "assets": {
     "directory": "dist-cloudflare/public",
     "binding": "ASSETS",
@@ -24,10 +25,6 @@
       "bucket_name": "imprint-uploads"
     }
   ],
-  "vars": {
-    "ADMIN_AUTH": "password",
-    "ADMIN_EMAIL": "kienchimto57@gmail.com"
-  },
   "routes": [
     {
       "pattern": "imprint.io.vn",
