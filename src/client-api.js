@@ -2935,12 +2935,13 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     }
 
     function locateSizeGuideField(){
-        const direct=app.querySelector(
+        const root=document;
+        const direct=root.querySelector(
             'input[name="sizeGuide"],textarea[name="sizeGuide"],#sizeGuide,[data-field="sizeGuide"]'
         );
         if(direct)return direct;
 
-        const labels=[].slice.call(app.querySelectorAll('label')).filter(function(label){
+        const labels=[].slice.call(root.querySelectorAll('label')).filter(function(label){
             return /hướng\s*dẫn\s*size/i.test(label.textContent||'');
         });
         for(const label of labels){
@@ -2955,7 +2956,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             if(nearby)return nearby;
         }
 
-        const textNodes=[].slice.call(app.querySelectorAll('label,span,p,div,strong,b')).filter(function(el){
+        const textNodes=[].slice.call(root.querySelectorAll('label,span,p,div,strong,b')).filter(function(el){
             return /^hướng\s*dẫn\s*size\s*:?$/i.test((el.textContent||'').trim());
         });
         for(const el of textNodes){
@@ -2968,6 +2969,22 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
                 const nested=next.querySelector&&next.querySelector('textarea,input:not([type="file"])');
                 if(nested)return nested;
                 next=next.nextElementSibling;
+            }
+        }
+        // Final fallback for the product editor modal used by ImPrint.
+        const all=[].slice.call(root.querySelectorAll('*')).filter(function(el){
+            return el.children.length===0&&/^hướng\s*dẫn\s*size\s*:?$/i.test((el.textContent||'').trim());
+        });
+        for(const el of all){
+            let node=el;
+            for(let depth=0;node&&depth<4;depth++,node=node.parentElement){
+                let sibling=node.nextElementSibling;
+                while(sibling){
+                    if(sibling.matches&&sibling.matches('textarea,input:not([type="file"])'))return sibling;
+                    const nested=sibling.querySelector&&sibling.querySelector('textarea,input:not([type="file"])');
+                    if(nested)return nested;
+                    sibling=sibling.nextElementSibling;
+                }
             }
         }
         return null;
@@ -3067,6 +3084,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     const observer=new MutationObserver(function(){
         requestAnimationFrame(installAdminSizeGuideUpload);
     });
-    observer.observe(app,{childList:true,subtree:true});
+    const observeRoot=document.body||document.documentElement;
+    observer.observe(observeRoot,{childList:true,subtree:true});
     requestAnimationFrame(installAdminSizeGuideUpload);
 })();
