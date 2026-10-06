@@ -2849,6 +2849,14 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         return '<div class="ip-size-table-wrap"><table class="ip-size-table"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
     }
 
+    const guideImages={
+        tee:'/static/size-guides/tshirt.svg',
+        baby:'/static/size-guides/baby-tee.svg',
+        longsleeve:'/static/size-guides/long-sleeve.svg',
+        sweater:'/static/size-guides/sweater-hoodie.svg',
+        hoodie:'/static/size-guides/sweater-hoodie.svg'
+    };
+
     function guideHtml(p){
         const key=productKind(p),g=guides[key];
         if(!g){
@@ -2857,10 +2865,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         }
         const extra=p&&p.sizeGuide?'<p class="ip-size-extra">'+String(p.sizeGuide).replace(/[<>&"]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch];})+'</p>':'';
         return '<div class="ip-size-guide">'+
-            '<div class="ip-size-title">'+g.title+'</div>'+
-            drawing(g)+
-            guideTable(g)+
-            '<p class="ip-size-note">Đơn vị: cm · Độ sai lệch 2–3 cm. Bảng size mang tính chất tham khảo.</p>'+
+            '<img class="ip-size-chart-image" src="'+guideImages[key]+'" alt="'+g.title+'" loading="eager" decoding="async">'+
             extra+
             '<div class="ip-care"><b>Chăm sóc áo</b><ul><li>Giặt mặt trái với nước mát hoặc tối đa 30°C.</li><li>Không dùng chất tẩy mạnh và không ngâm lâu.</li><li>Không ủi trực tiếp lên hình in.</li><li>Phơi nơi thoáng mát, hạn chế nắng gắt.</li></ul></div>'+
             '</div>';
@@ -2873,6 +2878,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         style.textContent=[
             '.ip-size-guide{margin-top:14px;padding:18px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}',
             '.ip-size-title{text-align:center;font-size:18px;font-weight:800;letter-spacing:.02em;margin:2px 0 8px}',
+            '.ip-size-chart-image{display:block;width:100%;height:auto;margin:0 auto;border-radius:10px;background:#fff;object-fit:contain}',
             '.ip-size-drawing{display:block;width:min(100%,520px);height:auto;margin:0 auto 8px;color:#241f1c}',
             '.ip-size-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}',
             '.ip-size-table{width:100%;border-collapse:collapse;min-width:520px;background:#fff;margin:0}',
