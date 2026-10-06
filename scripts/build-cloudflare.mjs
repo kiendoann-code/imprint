@@ -18,6 +18,9 @@ const output='dist-cloudflare';
 fs.rmSync(output,{recursive:true,force:true});
 fs.mkdirSync(output+'/public/static',{recursive:true});
 fs.mkdirSync(output+'/worker',{recursive:true});
+if(fs.existsSync('src/size-guides')){
+  fs.cpSync('src/size-guides',output+'/public/static/size-guides',{recursive:true});
+}
 const assets=new Set();
 function extract(data){
   const m=data.match(/^data:([^;]+);base64,([\w+/=]+)$/);
