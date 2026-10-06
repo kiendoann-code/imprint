@@ -3,7 +3,7 @@
   "name": "imprint",
   "main": "dist-cloudflare/worker/index.js",
   "compatibility_date": "2026-10-03",
-  "workers_dev": true,
+  "workers_dev": false,
   "keep_vars": true,
   "assets": {
     "directory": "dist-cloudflare/public",
@@ -23,16 +23,6 @@
     {
       "binding": "BUCKET",
       "bucket_name": "imprint-uploads"
-    }
-  ],
-  "routes": [
-    {
-      "pattern": "imprint.io.vn",
-      "custom_domain": true
-    },
-    {
-      "pattern": "admin.imprint.io.vn",
-      "custom_domain": true
     }
   ]
 }
