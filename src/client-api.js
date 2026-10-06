@@ -2955,19 +2955,26 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             if(nearby)return nearby;
         }
 
-        const textNodes=[].slice.call(app.querySelectorAll('span,p,div,strong,b')).filter(function(el){
-            return el.children.length===0&&/^hướng\s*dẫn\s*size\s*:?$/i.test((el.textContent||'').trim());
+        const textNodes=[].slice.call(app.querySelectorAll('label,span,p,div,strong,b')).filter(function(el){
+            return /^hướng\s*dẫn\s*size\s*:?$/i.test((el.textContent||'').trim());
         });
         for(const el of textNodes){
             const box=el.parentElement;
             const nearby=box&&box.querySelector('textarea,input:not([type="file"])');
             if(nearby)return nearby;
+            let next=el.nextElementSibling;
+            while(next){
+                if(next.matches&&next.matches('textarea,input:not([type="file"])'))return next;
+                const nested=next.querySelector&&next.querySelector('textarea,input:not([type="file"])');
+                if(nested)return nested;
+                next=next.nextElementSibling;
+            }
         }
         return null;
     }
 
     function installAdminSizeGuideUpload(){
-        if(!window.user||user.role!=='admin')return;
+        if(typeof user==='undefined'||!user||user.role!=='admin')return;
         const field=locateSizeGuideField();
         if(!field||field.dataset.imprintSizeGuideUpload==='1')return;
         field.dataset.imprintSizeGuideUpload='1';
