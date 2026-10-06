@@ -2859,14 +2859,17 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
     function guideHtml(p){
         const key=productKind(p),g=guides[key];
-        if(!g){
+        const uploadedGuide=p&&typeof p.sizeGuide==='string'&&/^\/api\/files\/[a-f0-9-]+$/i.test(p.sizeGuide.trim())?p.sizeGuide.trim():'';
+        if(!g&&!uploadedGuide){
             return '<div class="ip-size-fallback"><p>Bảng số đo riêng cho mẫu này đang được cập nhật.</p><p>Size bạn chọn vẫn được lưu cùng đơn hàng.</p></div>'+
                 '<div class="ip-care"><b>Chăm sóc áo</b><ul><li>Giặt mặt trái với nước mát.</li><li>Không dùng chất tẩy mạnh.</li><li>Không ủi trực tiếp lên hình in.</li><li>Phơi nơi thoáng mát, hạn chế nắng gắt.</li></ul></div>';
         }
-        const extra=p&&p.sizeGuide?'<p class="ip-size-extra">'+String(p.sizeGuide).replace(/[<>&"]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch];})+'</p>':'';
+        const legacyExtra=p&&p.sizeGuide&&!uploadedGuide?'<p class="ip-size-extra">'+String(p.sizeGuide).replace(/[<>&"]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch];})+'</p>':'';
+        const chartSrc=uploadedGuide||(g?guideImages[key]:'');
+        const chartTitle=g?g.title:'HƯỚNG DẪN SIZE';
         return '<div class="ip-size-guide">'+
-            '<img class="ip-size-chart-image" src="'+guideImages[key]+'" alt="'+g.title+'" loading="eager" decoding="async">'+
-            extra+
+            (chartSrc?'<img class="ip-size-chart-image" src="'+chartSrc+'" alt="'+chartTitle+'" loading="eager" decoding="async">':'')+
+            legacyExtra+
             '<div class="ip-care"><b>Chăm sóc áo</b><ul><li>Giặt mặt trái với nước mát hoặc tối đa 30°C.</li><li>Không dùng chất tẩy mạnh và không ngâm lâu.</li><li>Không ủi trực tiếp lên hình in.</li><li>Phơi nơi thoáng mát, hạn chế nắng gắt.</li></ul></div>'+
             '</div>';
     }
@@ -2921,4 +2924,142 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         };
         product.__imprintSizeCareV1=true;
     }
+})();
+
+
+/* IMPRINT_ADMIN_SIZE_GUIDE_IMAGE_UPLOAD_V1 */
+(function(){
+    function emitField(field){
+        field.dispatchEvent(new Event('input',{bubbles:true}));
+        field.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+
+    function locateSizeGuideField(){
+        const direct=app.querySelector(
+            'input[name="sizeGuide"],textarea[name="sizeGuide"],#sizeGuide,[data-field="sizeGuide"]'
+        );
+        if(direct)return direct;
+
+        const labels=[].slice.call(app.querySelectorAll('label')).filter(function(label){
+            return /hướng\s*dẫn\s*size/i.test(label.textContent||'');
+        });
+        for(const label of labels){
+            if(label.htmlFor){
+                const byFor=document.getElementById(label.htmlFor);
+                if(byFor&&/^(INPUT|TEXTAREA)$/.test(byFor.tagName))return byFor;
+            }
+            const nested=label.querySelector('textarea,input:not([type="file"])');
+            if(nested)return nested;
+            const parent=label.parentElement;
+            const nearby=parent&&parent.querySelector('textarea,input:not([type="file"])');
+            if(nearby)return nearby;
+        }
+
+        const textNodes=[].slice.call(app.querySelectorAll('span,p,div,strong,b')).filter(function(el){
+            return el.children.length===0&&/^hướng\s*dẫn\s*size\s*:?$/i.test((el.textContent||'').trim());
+        });
+        for(const el of textNodes){
+            const box=el.parentElement;
+            const nearby=box&&box.querySelector('textarea,input:not([type="file"])');
+            if(nearby)return nearby;
+        }
+        return null;
+    }
+
+    function installAdminSizeGuideUpload(){
+        if(!window.user||user.role!=='admin')return;
+        const field=locateSizeGuideField();
+        if(!field||field.dataset.imprintSizeGuideUpload==='1')return;
+        field.dataset.imprintSizeGuideUpload='1';
+        field.style.display='none';
+
+        if(!document.getElementById('imprint-admin-size-guide-upload-style')){
+            const style=document.createElement('style');
+            style.id='imprint-admin-size-guide-upload-style';
+            style.textContent=[
+                '.ip-admin-size-upload{display:grid;gap:10px;margin-top:8px;padding:12px;border:1px dashed var(--line);border-radius:10px;background:#faf8f5}',
+                '.ip-admin-size-preview{display:none;max-width:360px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}',
+                '.ip-admin-size-preview.has-image{display:block}',
+                '.ip-admin-size-preview img{display:block;width:100%;height:auto;max-height:380px;object-fit:contain;background:#fff}',
+                '.ip-admin-size-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+                '.ip-admin-size-actions button{padding:8px 12px;border-radius:8px}',
+                '.ip-admin-size-status{font-size:12px;color:var(--muted)}'
+            ].join('');
+            document.head.appendChild(style);
+        }
+
+        const wrap=document.createElement('div');
+        wrap.className='ip-admin-size-upload';
+        wrap.innerHTML='<div class="ip-admin-size-preview"><img alt="Ảnh hướng dẫn size"></div>'+
+            '<div class="ip-admin-size-actions">'+
+            '<input class="ip-admin-size-file" type="file" accept="image/png,image/jpeg,image/webp,image/avif" hidden>'+
+            '<button class="ip-admin-size-pick" type="button">Tải ảnh hướng dẫn size</button>'+
+            '<button class="ip-admin-size-remove" type="button">Xóa ảnh</button>'+
+            '</div>'+
+            '<div class="ip-admin-size-status">PNG, JPG, WEBP hoặc AVIF. Ảnh sẽ hiển thị trực tiếp tại “Kích cỡ & chăm sóc”.</div>';
+
+        field.insertAdjacentElement('afterend',wrap);
+
+        const input=wrap.querySelector('.ip-admin-size-file');
+        const pick=wrap.querySelector('.ip-admin-size-pick');
+        const remove=wrap.querySelector('.ip-admin-size-remove');
+        const preview=wrap.querySelector('.ip-admin-size-preview');
+        const img=preview.querySelector('img');
+        const status=wrap.querySelector('.ip-admin-size-status');
+
+        function refreshPreview(){
+            const value=(field.value||'').trim();
+            if(/^\/api\/files\/[a-f0-9-]+$/i.test(value)){
+                img.src=value;
+                preview.classList.add('has-image');
+                remove.hidden=false;
+            }else{
+                img.removeAttribute('src');
+                preview.classList.remove('has-image');
+                remove.hidden=true;
+            }
+        }
+
+        pick.addEventListener('click',function(){input.click();});
+        input.addEventListener('change',async function(){
+            const file=input.files&&input.files[0];
+            if(!file)return;
+            if(!/^image\/(png|jpeg|webp|avif)$/i.test(file.type)){
+                status.textContent='Chỉ hỗ trợ PNG, JPG, WEBP hoặc AVIF.';
+                input.value='';
+                return;
+            }
+            pick.disabled=true;
+            remove.disabled=true;
+            status.textContent='Đang tải ảnh lên…';
+            try{
+                const uploaded=await uploadBlob(file,true,{name:file.name});
+                field.value=uploaded.url;
+                emitField(field);
+                refreshPreview();
+                status.textContent='Đã tải ảnh. Bấm lưu sản phẩm để áp dụng.';
+            }catch(err){
+                status.textContent=err&&err.message?err.message:'Không tải được ảnh hướng dẫn size.';
+            }finally{
+                pick.disabled=false;
+                remove.disabled=false;
+                input.value='';
+            }
+        });
+
+        remove.addEventListener('click',function(){
+            field.value='';
+            emitField(field);
+            refreshPreview();
+            status.textContent='Đã xóa ảnh khỏi sản phẩm. Bấm lưu sản phẩm để áp dụng.';
+        });
+
+        refreshPreview();
+    }
+
+    const observer=new MutationObserver(function(){
+        requestAnimationFrame(installAdminSizeGuideUpload);
+    });
+    observer.observe(app,{childList:true,subtree:true});
+    requestAnimationFrame(installAdminSizeGuideUpload);
 })();
