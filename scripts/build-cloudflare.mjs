@@ -4,6 +4,16 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
+// Cloudflare Workers Builds is linked to the production Worker named "imprint".
+// Keep the repository's existing deployment settings/bindings intact, but align
+// the Worker name in the ephemeral CI checkout before Wrangler deploys it.
+const wranglerPath='wrangler.jsonc';
+if(fs.existsSync(wranglerPath)){
+  const wrangler=fs.readFileSync(wranglerPath,'utf8');
+  const aligned=wrangler.replace(/"name"\s*:\s*"imprint-store"/,'"name": "imprint"');
+  if(aligned!==wrangler)fs.writeFileSync(wranglerPath,aligned);
+}
+
 const output='dist-cloudflare';
 fs.rmSync(output,{recursive:true,force:true});
 fs.mkdirSync(output+'/public/static',{recursive:true});
