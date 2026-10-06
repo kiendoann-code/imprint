@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+<title id="t">Bảng size T-Shirt</title><desc id="d">Sơ đồ đo và bảng kích cỡ T-Shirt ImPrint.</desc>
+<rect width="1200" height="900" fill="#fff"/>
+<g fill="none" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M467 151 523 130q77 35 154 0l56 21 97 116-55 49-41-39-7 257H473l-7-257-41 39-55-49z"/>
+<path d="M523 130q15 66 77 66t77-66"/>
+<path d="M532 139q17 42 68 42t68-42" stroke-width="1.6" stroke-dasharray="5 5"/>
+<path d="M475 515h250M388 289l38 34M812 323l38-34" stroke-width="1.6" stroke-dasharray="5 5"/>
+</g>
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#111"/></marker></defs>
+<g fill="none" stroke="#111" stroke-width="2.5" stroke-dasharray="10 8" marker-start="url(#a)" marker-end="url(#a)">
+<path d="M344 148v390"/><path d="M470 279h264"/><path d="M746 158l102 103"/>
+</g>
+<g font-family="Arial,Helvetica,sans-serif" fill="#111" font-weight="700"><text x="294" y="356" font-size="36">a</text><text x="591" y="255" font-size="36">b</text><text x="856" y="214" font-size="36">c</text></g>
+<g font-family="Arial,Helvetica,sans-serif" fill="#080808">
+<text x="600" y="82" text-anchor="middle" font-size="54" font-weight="800">BẢNG SIZE T-SHIRT</text><path d="M55 66h235M910 66h235" stroke="#111" stroke-width="2"/>
+<rect x="55" y="565" width="1090" height="278" rx="10" fill="none" stroke="#111" stroke-width="2"/>
+<path d="M260 565v278M438 565v278M616 565v278M794 565v278M972 565v278M55 622h1090M55 677h1090M55 732h1090M55 787h1090" stroke="#111" stroke-width="1.6"/>
+<g font-size="27" font-weight="700"><text x="155" y="603">Size</text><text x="348" y="603">S</text><text x="526" y="603">M</text><text x="704" y="603">L</text><text x="882" y="603">XL</text><text x="1055" y="603">2XL</text></g>
+<g font-size="24"><g font-weight="700"><text x="80" y="659">Dài áo (a)</text><text x="80" y="714">Rộng áo (b)</text><text x="80" y="769">Tay (c)</text><text x="80" y="824">Cân nặng</text></g>
+<text x="348" y="659" text-anchor="middle">66</text><text x="526" y="659" text-anchor="middle">69</text><text x="704" y="659" text-anchor="middle">72</text><text x="882" y="659" text-anchor="middle">75</text><text x="1055" y="659" text-anchor="middle">78</text>
+<text x="348" y="714" text-anchor="middle">49</text><text x="526" y="714" text-anchor="middle">52</text><text x="704" y="714" text-anchor="middle">55</text><text x="882" y="714" text-anchor="middle">58</text><text x="1055" y="714" text-anchor="middle">61</text>
+<text x="348" y="769" text-anchor="middle">22</text><text x="526" y="769" text-anchor="middle">23</text><text x="704" y="769" text-anchor="middle">24</text><text x="882" y="769" text-anchor="middle">25</text><text x="1055" y="769" text-anchor="middle">26</text>
+<text x="348" y="824" text-anchor="middle">&lt;55kg</text><text x="526" y="824" text-anchor="middle">60–75kg</text><text x="704" y="824" text-anchor="middle">70–80kg</text><text x="882" y="824" text-anchor="middle">&gt;80kg</text><text x="1055" y="824" text-anchor="middle">&gt;90kg</text></g>
+<text x="600" y="878" text-anchor="middle" font-size="19" fill="#555">Độ sai lệch 2–3cm. Bảng size mang tính chất tham khảo.</text></g></svg>
