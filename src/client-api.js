@@ -2696,3 +2696,223 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         requestAnimationFrame(cinematicHomeFilm);
     }
 })();
+
+
+/* IMPRINT_PRODUCT_SIZE_CARE_V1 */
+(function(){
+    const guides={
+        tee:{
+            title:'BẢNG SIZE T-SHIRT',
+            kind:'tee',
+            sizes:['S','M','L','XL','2XL'],
+            rows:[
+                ['Dài áo (a)','66','69','72','75','78'],
+                ['Rộng áo (b)','49','52','55','58','61'],
+                ['Tay (c)','22','23','24','25','26'],
+                ['Cân nặng','<55kg','60–75kg','70–80kg','>80kg','>90kg'],
+                ['Chiều cao','<160','<170','<180','>180','>180']
+            ]
+        },
+        baby:{
+            title:'BẢNG SIZE BABY TEE',
+            kind:'baby',
+            sizes:['S','M','L'],
+            rows:[
+                ['Dài áo (a)','43','45','47'],
+                ['Rộng áo (b)','38','40','42'],
+                ['Tay (c)','13','14','15']
+            ]
+        },
+        longsleeve:{
+            title:'BẢNG SIZE LONG SLEEVE TEE',
+            kind:'longsleeve',
+            sizes:['M','L','XL'],
+            rows:[
+                ['Dài áo (a)','64','67','71'],
+                ['Rộng áo (b)','58','60','63'],
+                ['Tay (c)','59','61','63']
+            ]
+        },
+        sweater:{
+            title:'BẢNG SIZE SWEATER / HOODIE',
+            kind:'sweater',
+            sizes:['M','L','XL'],
+            rows:[
+                ['Dài áo (a)','66','70','74'],
+                ['Rộng áo (b)','57','61','64'],
+                ['Cân nặng','40–55kg','55–70kg','70–80kg']
+            ]
+        },
+        hoodie:{
+            title:'BẢNG SIZE SWEATER / HOODIE',
+            kind:'sweater',
+            sizes:['M','L','XL'],
+            rows:[
+                ['Dài áo (a)','66','70','74'],
+                ['Rộng áo (b)','57','61','64'],
+                ['Cân nặng','40–55kg','55–70kg','70–80kg']
+            ]
+        }
+    };
+
+    function productKind(p){
+        if(!p)return '';
+        const t=(typeof typeOf==='function'?typeOf(p):p.garmentType)||'';
+        if(guides[t])return t;
+        if(['tee','heavy','core'].includes(p.id))return 'tee';
+        if(p.id==='baby')return 'baby';
+        if(p.id==='longsleeve')return 'longsleeve';
+        if(p.id==='sweater')return 'sweater';
+        if(p.id==='hoodie')return 'hoodie';
+        return '';
+    }
+
+    function measureDefs(){
+        return '<defs><marker id="ip-size-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path></marker></defs>';
+    }
+
+    function shortSleeveSvg(baby){
+        const hem=baby?238:270;
+        const left=130,right=290,top=60;
+        const bodyTop=baby?106:112;
+        const sleeveY=baby?92:96;
+        const sleeveEndY=baby?142:158;
+        return '<svg class="ip-size-drawing" viewBox="0 0 420 320" role="img" aria-label="'+(baby?'Sơ đồ đo Baby Tee':'Sơ đồ đo T-Shirt')+'">'+
+            measureDefs()+
+            '<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+
+            '<path d="M166 61 Q210 45 254 61 L292 76 L335 '+sleeveEndY+' L300 174 L286 '+sleeveY+' L286 '+hem+' Q210 '+(hem+8)+' 134 '+hem+' L134 '+sleeveY+' L120 174 L85 '+sleeveEndY+' L128 76 Z"></path>'+
+            '<path d="M174 61 Q182 91 210 92 Q238 91 246 61"></path>'+
+            '<path d="M180 63 Q188 82 210 83 Q232 82 240 63" stroke-width="1.2" stroke-dasharray="3 3"></path>'+
+            '<line x1="134" y1="'+(hem-8)+'" x2="286" y2="'+(hem-8)+'" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="86" y1="'+(sleeveEndY-9)+'" x2="121" y2="166" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="334" y1="'+(sleeveEndY-9)+'" x2="299" y2="166" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '</g>'+
+            '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 5" marker-start="url(#ip-size-arrow)" marker-end="url(#ip-size-arrow)">'+
+            '<line x1="68" y1="'+top+'" x2="68" y2="'+hem+'"></line>'+
+            '<line x1="'+left+'" y1="'+bodyTop+'" x2="'+right+'" y2="'+bodyTop+'"></line>'+
+            '<line x1="294" y1="79" x2="338" y2="'+(sleeveEndY-5)+'"></line>'+
+            '</g>'+
+            '<g fill="currentColor" font-family="Arial, sans-serif" font-size="23" font-weight="700">'+
+            '<text x="44" y="'+((top+hem)/2)+'">a</text><text x="205" y="'+(bodyTop-12)+'">b</text><text x="347" y="'+(sleeveEndY-18)+'">c</text>'+
+            '</g></svg>';
+    }
+
+    function longSleeveSvg(){
+        return '<svg class="ip-size-drawing" viewBox="0 0 420 320" role="img" aria-label="Sơ đồ đo áo dài tay">'+
+            measureDefs()+
+            '<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+
+            '<path d="M164 58 Q210 43 256 58 L291 74 L324 267 L292 274 L276 151 L282 270 Q210 278 138 270 L144 151 L128 274 L96 267 L129 74 Z"></path>'+
+            '<path d="M174 59 Q181 91 210 92 Q239 91 246 59"></path>'+
+            '<path d="M181 61 Q189 82 210 83 Q231 82 239 61" stroke-width="1.2" stroke-dasharray="3 3"></path>'+
+            '<line x1="138" y1="261" x2="282" y2="261" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="97" y1="258" x2="127" y2="264" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="293" y1="264" x2="323" y2="258" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '</g>'+
+            '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 5" marker-start="url(#ip-size-arrow)" marker-end="url(#ip-size-arrow)">'+
+            '<line x1="66" y1="59" x2="66" y2="271"></line>'+
+            '<line x1="143" y1="116" x2="277" y2="116"></line>'+
+            '<line x1="289" y1="78" x2="320" y2="258"></line>'+
+            '</g>'+
+            '<g fill="currentColor" font-family="Arial, sans-serif" font-size="23" font-weight="700"><text x="42" y="172">a</text><text x="205" y="104">b</text><text x="326" y="172">c</text></g></svg>';
+    }
+
+    function sweaterSvg(){
+        return '<svg class="ip-size-drawing" viewBox="0 0 420 320" role="img" aria-label="Sơ đồ đo Sweater và Hoodie">'+
+            measureDefs()+
+            '<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+
+            '<path d="M162 58 Q210 43 258 58 L294 76 L326 261 L291 271 L274 145 L282 260 L274 281 Q210 289 146 281 L138 260 L146 145 L129 271 L94 261 L126 76 Z"></path>'+
+            '<path d="M174 59 Q181 90 210 91 Q239 90 246 59"></path>'+
+            '<path d="M181 61 Q189 81 210 82 Q231 81 239 61" stroke-width="1.2" stroke-dasharray="3 3"></path>'+
+            '<line x1="145" y1="261" x2="275" y2="261" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="95" y1="252" x2="129" y2="261" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '<line x1="291" y1="261" x2="325" y2="252" stroke-width="1.2" stroke-dasharray="3 3"></line>'+
+            '</g>'+
+            '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 5" marker-start="url(#ip-size-arrow)" marker-end="url(#ip-size-arrow)">'+
+            '<line x1="66" y1="59" x2="66" y2="280"></line>'+
+            '<line x1="144" y1="118" x2="276" y2="118"></line>'+
+            '</g>'+
+            '<g fill="currentColor" font-family="Arial, sans-serif" font-size="23" font-weight="700"><text x="42" y="177">a</text><text x="205" y="106">b</text></g></svg>';
+    }
+
+    function drawing(g){
+        if(g.kind==='tee')return shortSleeveSvg(false);
+        if(g.kind==='baby')return shortSleeveSvg(true);
+        if(g.kind==='longsleeve')return longSleeveSvg();
+        return sweaterSvg();
+    }
+
+    function guideTable(g){
+        let head='<tr><th>Size</th>'+g.sizes.map(function(s){return '<th>'+s+'</th>';}).join('')+'</tr>';
+        let body=g.rows.map(function(row){
+            return '<tr><th scope="row">'+row[0]+'</th>'+row.slice(1).map(function(v){return '<td>'+v+'</td>';}).join('')+'</tr>';
+        }).join('');
+        return '<div class="ip-size-table-wrap"><table class="ip-size-table"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+    }
+
+    function guideHtml(p){
+        const key=productKind(p),g=guides[key];
+        if(!g){
+            return '<div class="ip-size-fallback"><p>Bảng số đo riêng cho mẫu này đang được cập nhật.</p><p>Size bạn chọn vẫn được lưu cùng đơn hàng.</p></div>'+
+                '<div class="ip-care"><b>Chăm sóc áo</b><ul><li>Giặt mặt trái với nước mát.</li><li>Không dùng chất tẩy mạnh.</li><li>Không ủi trực tiếp lên hình in.</li><li>Phơi nơi thoáng mát, hạn chế nắng gắt.</li></ul></div>';
+        }
+        const extra=p&&p.sizeGuide?'<p class="ip-size-extra">'+String(p.sizeGuide).replace(/[<>&"]/g,function(ch){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch];})+'</p>':'';
+        return '<div class="ip-size-guide">'+
+            '<div class="ip-size-title">'+g.title+'</div>'+
+            drawing(g)+
+            guideTable(g)+
+            '<p class="ip-size-note">Đơn vị: cm · Độ sai lệch 2–3 cm. Bảng size mang tính chất tham khảo.</p>'+
+            extra+
+            '<div class="ip-care"><b>Chăm sóc áo</b><ul><li>Giặt mặt trái với nước mát hoặc tối đa 30°C.</li><li>Không dùng chất tẩy mạnh và không ngâm lâu.</li><li>Không ủi trực tiếp lên hình in.</li><li>Phơi nơi thoáng mát, hạn chế nắng gắt.</li></ul></div>'+
+            '</div>';
+    }
+
+    function installStyles(){
+        if(document.getElementById('imprint-product-size-care-v1-style'))return;
+        const style=document.createElement('style');
+        style.id='imprint-product-size-care-v1-style';
+        style.textContent=[
+            '.ip-size-guide{margin-top:14px;padding:18px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}',
+            '.ip-size-title{text-align:center;font-size:18px;font-weight:800;letter-spacing:.02em;margin:2px 0 8px}',
+            '.ip-size-drawing{display:block;width:min(100%,520px);height:auto;margin:0 auto 8px;color:#241f1c}',
+            '.ip-size-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}',
+            '.ip-size-table{width:100%;border-collapse:collapse;min-width:520px;background:#fff;margin:0}',
+            '.ip-size-table th,.ip-size-table td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 12px;text-align:center;font-size:12px;white-space:nowrap}',
+            '.ip-size-table thead th{background:#f2efeb;font-weight:800;color:var(--ink)}',
+            '.ip-size-table tbody th{text-align:left;font-weight:700;background:#faf8f5;color:var(--ink)}',
+            '.ip-size-table tr:last-child th,.ip-size-table tr:last-child td{border-bottom:0}',
+            '.ip-size-table th:last-child,.ip-size-table td:last-child{border-right:0}',
+            '.ip-size-note,.ip-size-extra{font-size:11px!important;line-height:1.55!important;margin:10px 0 0!important;color:var(--muted)!important;text-align:center}',
+            '.ip-care{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}',
+            '.ip-care b{font-size:12px}',
+            '.ip-care ul{margin:8px 0 0;padding-left:18px}',
+            '.ip-care li{font-size:12px!important;line-height:1.55;color:var(--muted);margin:4px 0!important}',
+            '.ip-size-fallback{padding:12px 0}',
+            '@media(max-width:680px){.ip-size-guide{padding:12px}.ip-size-title{font-size:15px}.ip-size-drawing{width:100%}.ip-size-table{min-width:470px}.ip-size-table th,.ip-size-table td{padding:9px 10px;font-size:11px}}'
+        ].join('');
+        document.head.appendChild(style);
+    }
+
+    function injectGuide(id){
+        const p=data&&Array.isArray(data.products)?data.products.find(function(x){return x.id===id;}):null;
+        if(!p)return;
+        const blocks=[].slice.call(document.querySelectorAll('.detail details'));
+        const sizeBlock=blocks.find(function(d){
+            const s=d.querySelector('summary');
+            return s&&s.textContent.trim()==='Kích cỡ & chăm sóc';
+        });
+        if(!sizeBlock)return;
+        sizeBlock.innerHTML='<summary>Kích cỡ & chăm sóc</summary>'+guideHtml(p);
+    }
+
+    installStyles();
+
+    if(typeof product==='function'&&!product.__imprintSizeCareV1){
+        const baseProductSizeCare=product;
+        product=function(id){
+            const result=baseProductSizeCare.apply(this,arguments);
+            requestAnimationFrame(function(){injectGuide(id);});
+            return result;
+        };
+        product.__imprintSizeCareV1=true;
+    }
+})();
