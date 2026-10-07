@@ -20,6 +20,12 @@ test('Cloudflare admin password, spoof prevention, logout and secret rotation',a
   const cookie=r.headers.get('set-cookie').split(';')[0];
   assert.equal((await(await call(env,'/api/bootstrap','GET',undefined,{cookie})).json()).user.role,'admin');
   assert.equal((await call(env,'/api/admin/settings/campaign','PUT',{value:'Quản trị riêng',revision:1},{cookie})).status,200);
+  const configuredEmail=env.ADMIN_EMAIL;
+  delete env.ADMIN_EMAIL;
+  assert.equal((await(await call(env,'/api/bootstrap','GET',undefined,{cookie})).json()).user.role,'admin');
+  r=await call(env,'/api/auth/login','POST',{email:configuredEmail,password:env.ADMIN_PASSWORD});
+  assert.equal(r.status,200);
+  env.ADMIN_EMAIL=configuredEmail;
   env.ADMIN_PASSWORD='Another-test-secret-2026';
   assert.equal((await(await call(env,'/api/bootstrap','GET',undefined,{cookie})).json()).user,null);
   r=await call(env,'/api/auth/login','POST',{email:env.ADMIN_EMAIL,password:env.ADMIN_PASSWORD});
