@@ -55,6 +55,7 @@
     input.dataset.ipColourPicker='1';
     const field=input.closest('.field')||input.parentElement;
     field.hidden=true;
+    field.style.display='none';
     const panel=document.createElement('section');
     panel.className='ip-colour-editor';
     panel.dataset.colourKind=kind;
