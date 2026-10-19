@@ -1,4 +1,5 @@
 // ImPrint Design Library API v1 — independent of product/editor data.
+import {BUILTIN_VECTORS} from './design-library-vectors.mjs';
 // Library deletes are soft; uploaded R2 objects must stay for saved designs and orders.
 const CATEGORIES=new Set(['Art','Icon','Vector']);
 const ROOT='/api/design-library',ADMIN='/api/admin/design-library';
@@ -26,6 +27,24 @@ function approvedSVG(input){const svg=input.trim();if(svg.length>2*1024*1024||!/
  // No CSS, XML entities, external references, untrusted renderable foreign content.
  return true;
 }
+// One-time idempotent seed: assets are stored in the existing public R2 bucket + D1 table.
+// Stable identifiers keep saved designs valid. Archiving via Admin never triggers reseeding.
+async function ensureBuiltinVectors(env){
+ const db=env.DB,key='imprint-vector-art-pack-10-20261020-v1';
+ await run(db,'CREATE TABLE IF NOT EXISTS design_library_packs (key TEXT PRIMARY KEY, created_at INTEGER NOT NULL)');
+ if(await one(db,'SELECT key FROM design_library_packs WHERE key=?',key))return;
+ const timestamp=Date.now(),encoder=new TextEncoder();
+ for(const art of BUILTIN_VECTORS){
+  validId(art.id);validId(art.assetId);
+  if(!approvedSVG(art.svg))throw Error('Bundled vector failed SVG security checks: '+art.filename);
+  const bytes=encoder.encode(art.svg),objectKey='uploads/'+art.assetId;
+  // A retry can safely write the same immutable original bytes again.
+  await env.BUCKET.put(objectKey,bytes,{httpMetadata:{contentType:'image/svg+xml'}});
+  await run(db,'INSERT OR IGNORE INTO assets(id,owner,object_key,type,size,public,metadata,created_at) VALUES(?,?,?,?,?,?,?,?)',art.assetId,'site-owner',objectKey,'image/svg+xml',bytes.byteLength,1,JSON.stringify({name:art.filename,width:512,height:512,source:'imprint-authored-svg-pack-v1'}),timestamp);
+  await run(db,'INSERT OR IGNORE INTO design_library_items(id,name,category,media_id,alt,position,enabled,archived,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',art.id,art.name,'Vector',art.assetId,art.alt,art.position,1,0,1,timestamp,timestamp);
+ }
+ await run(db,'INSERT OR IGNORE INTO design_library_packs(key,created_at) VALUES(?,?)',key,timestamp);
+}
 export async function handleDesignLibrary(req,env,u){
  const url=new URL(req.url),path=url.pathname;
  if(path!==ROOT&&path!==ADMIN&&!path.startsWith(ADMIN+'/'))return null;
@@ -33,6 +52,7 @@ export async function handleDesignLibrary(req,env,u){
  if(isAdmin&&u?.role!=='admin')bad(403,'Chỉ quản trị viên được chỉnh sửa thư viện.');
  await prepare(env.DB);const db=env.DB;
  if(req.method==='GET'&&(path===ROOT||path===ADMIN)){
+  if(env.BUILTIN_VECTOR_PACK){try{await ensureBuiltinVectors(env)}catch(e){console.error('ImPrint vector pack seed',e)}}
   const rows=await many(db,`SELECT * FROM design_library_items ${isAdmin?'':'WHERE archived=0 AND enabled=1'} ORDER BY position ASC,created_at DESC`);
   return j({items:rows.map(shape)});
  }
