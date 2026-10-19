@@ -128,8 +128,22 @@
       tile.setAttribute('aria-label','Thêm hình vào thiết kế');
     }
   }
+  // Previously saved asset layers may carry imported filenames with UUIDs.
+  // Only sanitize the visible label; never mutate the customer's saved design data.
+  function hideLegacyLayerFileNames(){
+    const root=document.querySelector('.panel.property-panel #layersContent');
+    if(!root)return;
+    const internalFile=/\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(?:png|jpe?g|webp|avif|svg)\\b/i;
+    for(const node of root.querySelectorAll('span, small')){
+      if(node.children.length===0&&internalFile.test(node.textContent||''))node.textContent='Hình từ thư viện';
+    }
+    for(const node of root.querySelectorAll('[title]')){
+      if(internalFile.test(node.getAttribute('title')||''))node.removeAttribute('title');
+    }
+  }
   function mountStudio(){if(!studioReady())return;
     hideCustomerAssetTitles();
+    hideLegacyLayerFileNames();
     const app=document.getElementById('app'),btns=Array.from(app.querySelectorAll('button'));
     const categoryBtns=btns.filter(b=>CAT.includes(b.textContent.trim()));
     if(categoryBtns.length<3)return;
