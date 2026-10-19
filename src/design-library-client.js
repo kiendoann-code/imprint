@@ -37,7 +37,9 @@
  .ip-library-public h4{font-size:12px;margin:0 0 8px;font-weight:700}.ip-library-public .ip-lib-public-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
  .ip-lib-public-tile{display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid #ebe5e0;border-radius:9px;padding:5px;cursor:pointer;min-width:0}
  .ip-lib-public-tile img{width:100%;aspect-ratio:1;object-fit:contain;background:#f6f3f1;border-radius:5px}
- .ip-lib-public-tile span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ /* Thumbnail-only customer library: captions are internal metadata, not storefront labels. */
+ .panel.library-panel #libraryContent #assetGrid.asset-grid > button > span,
+ .panel.library-panel #libraryContent #ip-library-public .ip-lib-public-tile > span{display:none!important}
  @media(max-width:850px){.ip-lib-upload{grid-template-columns:1fr 1fr}.ip-lib-upload button{grid-column:1/-1}}
  @media(max-width:500px){.ip-lib-upload{grid-template-columns:1fr}.ip-lib-upload button{grid-column:auto}.ip-library-admin{padding:14px}}
  `;document.head.append(style)}
@@ -118,7 +120,16 @@
   async function loadPublic(){try{publicList=(await request(API)).items||[];lastLoad=Date.now();mountStudio()}catch(e){console.warn('ImPrint library',e)}}
   function studioReady(){if(location.hash!=='#studio'&&!(document.querySelector('#studio-shell')))return false;
     const app=document.getElementById('app');return !!app&&Array.from(app.querySelectorAll('button')).some(b=>b.textContent.trim()==='Thư viện')}
+  function hideCustomerAssetTitles(){
+    const root=document.querySelector('.panel.library-panel #libraryContent');
+    if(!root)return;
+    for(const tile of root.querySelectorAll('#assetGrid.asset-grid > button, #ip-library-public .ip-lib-public-tile')){
+      tile.removeAttribute('title'); // No browser tooltip containing a filename, slug or UUID.
+      tile.setAttribute('aria-label','Thêm hình vào thiết kế');
+    }
+  }
   function mountStudio(){if(!studioReady())return;
+    hideCustomerAssetTitles();
     const app=document.getElementById('app'),btns=Array.from(app.querySelectorAll('button'));
     const categoryBtns=btns.filter(b=>CAT.includes(b.textContent.trim()));
     if(categoryBtns.length<3)return;
@@ -132,14 +143,16 @@
     const chosen=CAT.includes(current)?current:filter;
     const version=chosen+':'+publicList.map(it=>it.id+it.revision).join(',');
     if(panel.dataset.libraryVersion!==version){panel.dataset.libraryVersion=version;renderPublic(panel,chosen)}
+    hideCustomerAssetTitles();
   }
   function renderPublic(panel,category){if(!panel)return;
     const list=publicList.filter(it=>category==='Tất cả'||it.category===category);
     panel.replaceChildren();if(!list.length)return;
     panel.append(element('h4','','ImPrint · '+(category==='Tất cả'?'Art / Icon / Vector':category)));
     const grid=element('div','ip-lib-public-grid');
-    for(const it of list){const tile=element('button','ip-lib-public-tile');tile.type='button';tile.title='Thêm '+it.name+' vào thiết kế';tile.draggable=true;
-      const im=document.createElement('img');im.src=it.url;im.alt=it.alt||it.name;im.loading='lazy';tile.append(im,element('span','',it.name));
+    for(const it of list){const tile=element('button','ip-lib-public-tile');tile.type='button';tile.draggable=true;
+      tile.setAttribute('aria-label','Thêm hình vào thiết kế');
+      const im=document.createElement('img');im.src=it.url;im.alt='';im.loading='lazy';tile.append(im);
       tile.addEventListener('click',()=>insert(it));tile.addEventListener('dragstart',ev=>{ev.dataTransfer.setData('text/uri-list',new URL(it.url,location.origin).href);ev.dataTransfer.setData('text/plain',new URL(it.url,location.origin).href)});grid.append(tile)}
     panel.append(grid);
   }
@@ -161,8 +174,9 @@
         can.getContext('2d').drawImage(bitmap,0,0,can.width,can.height);bitmap.close();
         blob=await new Promise(resolve=>can.toBlob(resolve,'image/png'));if(!blob)throw Error('Không xử lý được SVG.');
       }
-      const file=new File([blob],it.name+'.'+((blob.type||'').split('/')[1]||'png'),{type:blob.type||'image/png'}),transfer=new DataTransfer();transfer.items.add(file);
-      fileInput.files=transfer.files;fileInput.dispatchEvent(new Event('change',{bubbles:true}));notify('Đã chuyển "'+it.name+'" vào công cụ Ảnh.');
+      const extension=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/avif':'avif'})[blob.type]||'png';
+      const file=new File([blob],'ImPrint-Artwork.'+extension,{type:blob.type||'image/png'}),transfer=new DataTransfer();transfer.items.add(file);
+      fileInput.files=transfer.files;fileInput.dispatchEvent(new Event('change',{bubbles:true}));notify('Đã chuyển hình từ thư viện vào công cụ Ảnh.');
     }catch(e){notify(e.message)}
   }
   // Legacy app renders sections by replacing #app, so hooks always run *after* its render.
@@ -172,6 +186,8 @@
   let mutationPending=false;new MutationObserver(()=>{if(mutationPending)return;mutationPending=true;setTimeout(()=>{mutationPending=false;if(studioReady())mountStudio()},150)})
     .observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
   window.addEventListener('hashchange',()=>{if(location.hash==='#studio'&&Date.now()-lastLoad>15000)loadPublic()});
+  // Install thumbnail-only styles before the editor opens; keep admin names visible.
+  css();
   // Defer first load to avoid delaying legacy initialization.
   setTimeout(()=>{if(location.hash==='#studio')loadPublic()},500);
 })();
