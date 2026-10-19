@@ -182,11 +182,23 @@
       if(!fileInput)throw Error('Chưa tìm được công cụ tải ảnh của Studio.');
       const response=await fetch(it.url,{credentials:'same-origin'});if(!response.ok)throw Error('Không tải được hình trong thư viện.');let blob=await response.blob();
       if(blob.type==='image/svg+xml'){
-        // Existing editor accepts bitmap images: rasterize a clean SVG solely for the canvas layer.
-        const bitmap=await createImageBitmap(blob).catch(()=>null);if(!bitmap)throw Error('SVG này không tương thích công cụ thiết kế.');
-        const can=document.createElement('canvas');const ratio=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));can.width=Math.round(bitmap.width*ratio);can.height=Math.round(bitmap.height*ratio);
-        can.getContext('2d').drawImage(bitmap,0,0,can.width,can.height);bitmap.close();
-        blob=await new Promise(resolve=>can.toBlob(resolve,'image/png'));if(!blob)throw Error('Không xử lý được SVG.');
+        // Browser support for createImageBitmap(SVG Blob) is inconsistent. <img> uses
+        // the same SVG decoder as the already verified library thumbnails.
+        const picture=new Image();picture.decoding='async';
+        await new Promise((resolve,reject)=>{
+          picture.onload=resolve;
+          picture.onerror=()=>reject(Error('Không tải được vector SVG.'));
+          picture.src=it.url;
+          if(picture.complete&&picture.naturalWidth>0)resolve();
+        });
+        const w=picture.naturalWidth||512,h=picture.naturalHeight||512;
+        const scale=Math.min(6,3072/Math.max(w,h));
+        const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
+        const context=canvas.getContext('2d',{alpha:true});if(!context)throw Error('Trình duyệt chưa hỗ trợ tạo ảnh từ vector.');
+        context.clearRect(0,0,canvas.width,canvas.height);
+        context.drawImage(picture,0,0,canvas.width,canvas.height);
+        blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+        if(!blob)throw Error('Không tạo được ảnh PNG từ vector.');
       }
       const extension=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/avif':'avif'})[blob.type]||'png';
       const file=new File([blob],'ImPrint-Artwork.'+extension,{type:blob.type||'image/png'}),transfer=new DataTransfer();transfer.items.add(file);
