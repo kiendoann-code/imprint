@@ -191,7 +191,7 @@
   function scan(){
     pendingScan=false;
     const select=document.getElementById('fontSelect');
-    if(select||document.querySelector('.font-library'))installStyles();
+    if(select||document.querySelectorAll('.font-library').length)installStyles();
     if(select){
       if(fontSelectSeen!==select){fontSelectSeen=select;dismiss();enhanceSelect(select);}
     }else if(fontSelectSeen){fontSelectSeen=null;dismiss();}
