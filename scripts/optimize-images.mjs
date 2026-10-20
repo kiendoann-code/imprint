@@ -9,7 +9,7 @@ import sharp from 'sharp';
 
 export async function optimizeStaticImages({directory,assets,html,seed,minimumBytes=300*1024}){
   const replacements=new Map(),stats=[],root=path.join(directory,'public');
-  const originals=[...assets].filter(url=>/^\/static\/[a-f0-9]{64}\.(?:png|jpg|jpeg)$/.test(url));
+  const originals=[...assets].filter(url=>/^\/static\/[a-f0-9]{64}\.(?:png|jpg|jpeg|webp)$/.test(url));
   for(const url of originals){
     const originalPath=path.join(root,url.slice(1));
     let bytes;
@@ -38,7 +38,7 @@ export async function optimizeStaticImages({directory,assets,html,seed,minimumBy
   // Only URLs created by the extraction step are replaced; no source HTML,
   // images, layout rules, product metadata, or customer uploads are edited.
   const rewrite=value=>typeof value==='string'
-    ?value.replace(/\/static\/[a-f0-9]{64}\.(?:png|jpg|jpeg)/g,m=>replacements.get(m)||m)
+    ?value.replace(/\/static\/[a-f0-9]{64}\.(?:png|jpg|jpeg|webp)/g,m=>replacements.get(m)||m)
     :value;
   html=rewrite(html);
   const visit=value=>{
