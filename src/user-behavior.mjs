@@ -65,11 +65,19 @@ async function report(db,days){
     }
   };
 }
-export async function recordBehaviorConversion(db,sessionId){
+export async function recordBehaviorConversion(db,sessionId,visitorId){
   if(!UUID.test(sessionId||''))return;
   await ensureTables(db);
-  await db.prepare('UPDATE behavior_sessions SET converted=1 WHERE session_id=? AND updated_at>=?')
-    .bind(sessionId,Date.now()-1800000).run();
+  const now=Date.now();
+  if(UUID.test(visitorId||'')){
+    await db.prepare('INSERT INTO behavior_sessions(session_id,visitor_id,started_at,updated_at,converted) VALUES(?,?,?,?,1) '+
+      'ON CONFLICT(session_id) DO UPDATE SET converted=1 '+
+      'WHERE behavior_sessions.visitor_id=excluded.visitor_id AND behavior_sessions.updated_at>=?')
+      .bind(sessionId,visitorId,now,now,now-1800000).run();
+  }else{
+    await db.prepare('UPDATE behavior_sessions SET converted=1 WHERE session_id=? AND updated_at>=?')
+      .bind(sessionId,now-1800000).run();
+  }
 }
 export async function handleBehavior(req,env,user){
   const path=new URL(req.url).pathname;
