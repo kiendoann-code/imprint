@@ -58,7 +58,7 @@
     pageViews++;
     flush();
   }
-  window.ImprintBehavior={sessionId:()=>current&&!adminView()?current.id:null};
+  window.ImprintBehavior={sessionId:()=>current&&!adminView()?current.id:null,visitorId:()=>current&&!adminView()?visitor:null};
   window.addEventListener('pointerdown',()=>onActivity(true),{passive:true});
   window.addEventListener('keydown',()=>onActivity(true),{passive:true});
   window.addEventListener('scroll',updateScroll,{passive:true});
@@ -68,7 +68,6 @@
   setInterval(()=>{if(current&&!adminView()&&document.visibilityState==='visible'&&document.hasFocus()&&Date.now()-lastInput<30000)engaged=Math.min(60000,engaged+1000)},1000);
   setInterval(()=>{if(current&&Date.now()-current.lastSeen>1800000){flush();current=null;openSession()}else flush()},15000);
 
-  const styles=String.raw;
   function addStyle(){
     if(document.getElementById('ip-behavior-css'))return;
     const style=document.createElement('style');
@@ -155,10 +154,10 @@
       chart.replaceChildren();
       const byDate=new Map((data.daily||[]).map(v=>[v.day,Number(v.sessions)]));
       const entries=[];
-      const today=new Date();
-      for(let i=days-1;i>=0;i--){
-        const d=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate())-i*DAY);
-        const name=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+      const today=new Date(Date.now()+7*3600000);
+      const midnight=Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate());
+      for(let i=days;i>=0;i--){
+        const name=new Date(midnight-i*DAY).toISOString().slice(0,10);
         entries.push({name,count:byDate.get(name)||0});
       }
       const largest=Math.max(1,...entries.map(v=>v.count));
