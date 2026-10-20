@@ -58,3 +58,12 @@ test('defers only collection media and preserves unrelated product imagery',()=>
   assert.match(result.html,/Only collection media is deferred/);
   assert.match(result.html,/id="product-layout">Unchanged product design/);
 });
+
+test('avoids a synchronous carousel layout read without changing its sizing math',()=>{
+  const carousel='function fit(){const width=scene.clientWidth;const ratio=Math.max(.6,1/(2*Math.tan(Math.PI/n)));const cw=Math.min(210,(width*.8)/(2*ratio+1));}const observer=new ResizeObserver(fit);observer.observe(scene);fit();cleanup=()=>observer.disconnect();';
+  const result=optimizePage(fixture().replace(marker,carousel+marker));
+  assert.doesNotMatch(result.html,/scene\.clientWidth/);
+  assert.match(result.html,/entries\[0\]\?\.contentRect\.width/);
+  assert.match(result.html,/const cw=Math\.min\(210,\(width\*\.8\)/);
+  assert.doesNotMatch(result.html,/observer\.observe\(scene\);fit\(\)/);
+});
