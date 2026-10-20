@@ -41,6 +41,7 @@ const optimized=optimizePage(html,{externalizeScript:true});
 html=optimized.html;
 fs.writeFileSync(output+'/public'+optimized.script.path,optimized.script.source);
 fs.writeFileSync(output+'/public/index.html',html);
+fs.writeFileSync(output+'/public/static/imprint-performance-20261020-v1.json',JSON.stringify({release:'imprint-fast-boot-20261020-v1',optimized:true,features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js']}));
 fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=31536000, immutable\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
 fs.copyFileSync('src/backend.mjs',output+'/worker/backend.mjs');
