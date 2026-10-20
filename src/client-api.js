@@ -2614,17 +2614,18 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         if(media instanceof HTMLVideoElement){
             media.muted=true;
             media.defaultMuted=true;
-            media.autoplay=true;
+            media.autoplay=false;
             media.loop=true;
             media.playsInline=true;
             media.preload='none';
 
             media.setAttribute('muted','');
-            media.setAttribute('autoplay','');
+            media.removeAttribute('autoplay');
             media.setAttribute('loop','');
             media.setAttribute('playsinline','');
             media.removeAttribute('controls');
 
+            let filmInView=false;
             const playFilm=()=>{
                 const attempt=media.play();
                 if(attempt && typeof attempt.catch==='function'){
@@ -2639,7 +2640,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
             first.onmouseleave=()=>{
                 first.classList.remove('is-paused-by-hover');
-                playFilm();
+                if(filmInView)playFilm();
             };
 
             first.onfocusin=()=>{
@@ -2649,10 +2650,24 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
             first.onfocusout=()=>{
                 first.classList.remove('is-paused-by-hover');
-                playFilm();
+                if(filmInView)playFilm();
             };
 
-            playFilm();
+            // A video can outweigh all other assets combined. Never start its
+            // download when the carousel is outside the visible viewport.
+            if('IntersectionObserver' in window){
+                const filmObserver=new IntersectionObserver(entries=>{
+                    const visible=entries.some(entry=>entry.isIntersecting);
+                    filmInView=visible;
+                    if(visible&&!first.classList.contains('is-paused-by-hover'))playFilm();
+                    else media.pause();
+                    if(!first.isConnected)filmObserver.disconnect();
+                },{rootMargin:'160px 0px',threshold:0});
+                filmObserver.observe(first);
+            }else{
+                filmInView=true;
+                playFilm();
+            }
         }
 
         const photos=section.querySelector('.collection-photos');
@@ -2770,7 +2785,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
         const baseHomeSingleVideoV6=home;
         home=function(){
             const result=baseHomeSingleVideoV6.apply(this,arguments);
-            requestAnimationFrame(cinematicHomeFilm);
+            cinematicHomeFilm();
             return result;
         };
     }
