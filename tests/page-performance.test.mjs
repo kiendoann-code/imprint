@@ -41,3 +41,20 @@ test('extracts JavaScript to immutable file and defers script execution',()=>{
 test('fails safely if source startup contract changes',()=>{
   assert.throws(()=>optimizePage('<html></html>'),/startup contract changed/);
 });
+
+test('prefers the actual above-the-fold mockup over the collection poster',()=>{
+  const hero='/static/'+'b'.repeat(64)+'.webp';
+  const sample=fixture().replace('const HERO_IMAGE=',`const MOCKUPS={"f_M":{"src":"${hero}"}};const HERO_IMAGE=`);
+  const result=optimizePage(sample);
+  assert.match(result.html,new RegExp('rel="preload" as="image" href="'+hero));
+  assert.equal((result.html.match(/rel="preload" as="image"/g)||[]).length,1);
+});
+
+test('defers only collection media and preserves unrelated product imagery',()=>{
+  const sample=fixture().replace(marker,
+    `const collectionMediaString='<img src="${'${esc(c.src)}'}" alt="${'${esc(c.title)}'}" loading="lazy"><source src="${'${esc(c.src)}'}"></video>';`+marker);
+  const result=optimizePage(sample);
+  assert.match(result.html,/data-imprint-src/);
+  assert.match(result.html,/Only collection media is deferred/);
+  assert.match(result.html,/id="product-layout">Unchanged product design/);
+});
