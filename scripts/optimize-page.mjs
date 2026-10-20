@@ -65,6 +65,13 @@ export function optimizePage(html,{externalizeScript=false}={}){
   if(html.includes(collectionVideo))html=html.replace(collectionVideo,
     '<source data-imprint-src="${esc(c.src)}"></video>');
   html=html.replace(initialBoot,lazyStudio+lazyCollectionMedia+initialBoot);
+  // The 3D collection carousel previously measured scene.clientWidth immediately
+  // after DOM writes, forcing a synchronous layout. The ResizeObserver entry
+  // contains the same width without another layout read; sizing math is unchanged.
+  html=html.replace('function fit(){const width=scene.clientWidth;',
+    'function fit(entries){const width=entries[0]?.contentRect.width;if(!width)return;');
+  html=html.replace('const observer=new ResizeObserver(fit);observer.observe(scene);fit();cleanup=()=>observer.disconnect();',
+    'const observer=new ResizeObserver(fit);observer.observe(scene);cleanup=()=>observer.disconnect();');
   // The existing 6 bundled display fonts are still available; do not hide text
   // while waiting for font downloads. Their eventual appearance is unchanged.
   html=html.replace(/font-display:block/g,'font-display:swap');
