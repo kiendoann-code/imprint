@@ -33,6 +33,7 @@ function loadMocks(){
 }`;
 
 const initialBoot="init().catch(e=>{console.error(e);showImprintError('service')});";
+const lazyCollectionMedia="\n// Only collection media is deferred. The hero, product details, order preview,\n// Studio artwork and image data stay on their existing direct-loading paths.\nconst deferredMedia=(function(){\n  if(typeof window==='undefined'||typeof document==='undefined')return;\n  const root=document.getElementById('app');\n  if(!root)return;\n  const load=target=>{\n    if(target.tagName==='IMG'){\n      const src=target.getAttribute('data-imprint-src');\n      if(src){target.removeAttribute('data-imprint-src');target.src=src}\n    }else if(target.tagName==='VIDEO'){\n      const sources=target.querySelectorAll('source[data-imprint-src]');\n      if(!sources.length)return;\n      for(const source of sources){\n        source.src=source.getAttribute('data-imprint-src');\n        source.removeAttribute('data-imprint-src');\n      }\n      target.load();\n      if(target.autoplay&&target.muted)target.play().catch(()=>{});\n    }\n  };\n  const seen=new WeakSet();\n  const io='IntersectionObserver'in window?new IntersectionObserver(entries=>{\n    for(const entry of entries){\n      if(!entry.isIntersecting)continue;\n      io.unobserve(entry.target);\n      load(entry.target);\n    }\n  },{rootMargin:'240px 0px',threshold:0}):null;\n  const attach=target=>{\n    if(seen.has(target))return;\n    seen.add(target);\n    if(io)io.observe(target);else load(target);\n  };\n  let scheduled=false;\n  const scan=()=>{\n    scheduled=false;\n    for(const img of root.querySelectorAll('img[data-imprint-src]'))attach(img);\n    for(const source of root.querySelectorAll('source[data-imprint-src]')){\n      const video=source.closest('video');\n      if(video)attach(video);\n    }\n  };\n  const schedule=()=>{\n    if(scheduled)return;\n    scheduled=true;\n    requestAnimationFrame(scan);\n  };\n  new MutationObserver(schedule).observe(root,{childList:true,subtree:true});\n  schedule();\n})();\n";
 const lazyStudio=`// Defer Studio-only mockup decoding until the editor is actually opened.
 const performanceStudio=studio;
 studio=function(...args){
@@ -55,7 +56,15 @@ export function optimizePage(html,{externalizeScript=false}={}){
   if(!html.includes(eagerMocks))throw Error('ImPrint mockup loading contract changed; abort unsafe optimization.');
   html=html.replace(eagerMocks,selectiveMocks);
   html=html.replace(blockingInit,fastInit);
-  html=html.replace(initialBoot,lazyStudio+initialBoot);
+  // Do not even assign network URLs to below-the-fold collection media until
+  // it approaches the viewport. The existing collection layout is untouched.
+  const collectionImage='<img src="${esc(c.src)}" alt="${esc(c.title)}" loading="lazy">';
+  const collectionVideo='<source src="${esc(c.src)}"></video>';
+  if(html.includes(collectionImage))html=html.replace(collectionImage,
+    '<img data-imprint-src="${esc(c.src)}" alt="${esc(c.title)}" loading="lazy" decoding="async">');
+  if(html.includes(collectionVideo))html=html.replace(collectionVideo,
+    '<source data-imprint-src="${esc(c.src)}"></video>');
+  html=html.replace(initialBoot,lazyStudio+lazyCollectionMedia+initialBoot);
   // The existing 6 bundled display fonts are still available; do not hide text
   // while waiting for font downloads. Their eventual appearance is unchanged.
   html=html.replace(/font-display:block/g,'font-display:swap');
