@@ -59,11 +59,24 @@ fs.writeFileSync(output+'/public/static/imprint-performance-20261020-v1.json',JS
   imageOptimization:{files:imageOptimization.stats.length,bytesSaved:imageOptimization.bytesSaved},
   features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js','syntax-and-whitespace-minified-js','content-addressed-webp-image-optimization']
 }));
-fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=31536000, immutable\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
+fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=86400\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
 fs.copyFileSync('src/backend.mjs',output+'/worker/backend.mjs');
 fs.writeFileSync(output+'/worker/entry.mjs',`import backend from './backend.mjs';
-export default {fetch(req,env,ctx){if(new URL(req.url).pathname.startsWith('/static/'))return env.ASSETS.fetch(req);return backend.fetch(req,{...env,ADMIN_AUTH:'password'},ctx)}};`);
+export default {async fetch(req,env,ctx){
+ const pathname=new URL(req.url).pathname;
+ if(pathname.startsWith('/static/')){
+  const response=await env.ASSETS.fetch(req);
+  if(!response.ok)return response;
+  if(/^\\/static\\/(?:[a-f0-9]{64}\\.(?:png|jpg|jpeg|webp|woff2?|mp4)|imprint-app-[a-f0-9]{24}\\.js)$/.test(pathname)){
+   const headers=new Headers(response.headers);
+   headers.set('Cache-Control','public, max-age=31536000, immutable');
+   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+  }
+  return response;
+ }
+ return backend.fetch(req,{...env,ADMIN_AUTH:'password'},ctx);
+}};`);
 prepareAdminBuild('cloudflare');fs.copyFileSync('src/gallery-reviews.mjs','dist-cloudflare/worker/gallery-reviews.mjs');fs.copyFileSync('src/seo.mjs','dist-cloudflare/worker/seo.mjs');await build({entryPoints:[output+'/worker/entry.mjs'],outfile:output+'/worker/index.js',bundle:true,format:'esm',platform:'browser',target:'es2022'});
 for(const name of ['entry.mjs','generated.mjs','backend.mjs'])fs.rmSync(path.join(output,'worker',name));
 const heaviest=[...assets].map(url=>{
