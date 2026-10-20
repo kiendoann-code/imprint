@@ -1977,7 +1977,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
                     preload="metadata">
 
                     <source
-                        src="${v93esc(c.src)}">
+                        data-imprint-src="${v93esc(c.src)}">
 
                 </video>
             `;
@@ -1985,9 +1985,11 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
         return `
             <img
-                src="${v93esc(c.src)}"
+                data-imprint-src="${v93esc(c.src)}"
                 alt=""
-                loading="lazy">
+                loading="lazy"
+                decoding="async"
+                style="aspect-ratio:auto 4 / 5">
         `;
     }
 
@@ -2028,9 +2030,10 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
                 <div class="v93-pick-photo">
 
                     <img
-                        src="${v93esc(p.poseImg)}"
+                        data-imprint-src="${v93esc(p.poseImg)}"
                         alt="${v93esc(p.name)}"
-                        loading="lazy">
+                        loading="lazy"
+                        decoding="async">
 
                 </div>
 
@@ -2614,7 +2617,7 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
             media.autoplay=true;
             media.loop=true;
             media.playsInline=true;
-            media.preload='auto';
+            media.preload='none';
 
             media.setAttribute('muted','');
             media.setAttribute('autoplay','');
