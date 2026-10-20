@@ -1,6 +1,6 @@
 import {prepareAdminBuild} from './build-admin-assets.mjs';
 import {optimizePage} from './optimize-page.mjs';
-import {build} from 'esbuild';
+import {build,transform} from 'esbuild';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -39,9 +39,18 @@ html=html.replace('init().catch(e=>',fs.readFileSync('src/client-api.js','utf8')
 html=html.replace(/Không mở được bộ nhớ trình duyệt\./g,'Không kết nối được ImPrint.').replace('Hãy mở file bằng Chrome hoặc Edge, cho phép lưu dữ liệu và không dùng chế độ chặn lưu trữ.','Kiểm tra kết nối mạng và tải lại trang.');
 const optimized=optimizePage(html,{externalizeScript:true});
 html=optimized.html;
-fs.writeFileSync(output+'/public'+optimized.script.path,optimized.script.source);
+// Reduce transfer and JS parse overhead without renaming globals used by inline
+// event handlers or changing the authored DOM, styling, product imagery or routes.
+const compactApp=await transform(optimized.script.source,{
+  loader:'js',target:'es2022',minifyWhitespace:true,minifySyntax:true,
+  minifyIdentifiers:false,legalComments:'none'
+});
+const compactHash=crypto.createHash('sha256').update(compactApp.code).digest('hex').slice(0,24);
+const compactPath='/static/imprint-app-'+compactHash+'.js';
+html=html.replace(optimized.script.path,compactPath);
+fs.writeFileSync(output+'/public'+compactPath,compactApp.code);
 fs.writeFileSync(output+'/public/index.html',html);
-fs.writeFileSync(output+'/public/static/imprint-performance-20261020-v1.json',JSON.stringify({release:'imprint-fast-boot-20261020-v1',optimized:true,features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js']}));
+fs.writeFileSync(output+'/public/static/imprint-performance-20261020-v1.json',JSON.stringify({release:'imprint-fast-boot-20261020-v1',optimized:true,features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js','syntax-and-whitespace-minified-js']}));
 fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=31536000, immutable\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
 fs.copyFileSync('src/backend.mjs',output+'/worker/backend.mjs');
