@@ -61,7 +61,7 @@ export function optimizePage(html,{externalizeScript=false}={}){
   const collectionImage='<img src="${esc(c.src)}" alt="${esc(c.title)}" loading="lazy">';
   const collectionVideo='<source src="${esc(c.src)}"></video>';
   if(html.includes(collectionImage))html=html.replace(collectionImage,
-    '<img data-imprint-src="${esc(c.src)}" alt="${esc(c.title)}" loading="lazy" decoding="async">');
+    '<img data-imprint-src="${esc(c.src)}" alt="${esc(c.title)}" loading="lazy" decoding="async" style="aspect-ratio:auto 4/5">');
   if(html.includes(collectionVideo))html=html.replace(collectionVideo,
     '<source data-imprint-src="${esc(c.src)}"></video>');
   html=html.replace(initialBoot,lazyStudio+lazyCollectionMedia+initialBoot);
