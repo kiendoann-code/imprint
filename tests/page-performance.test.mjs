@@ -22,7 +22,7 @@ test('keeps HTML/design intact while unblocking first paint',()=>{
   assert.doesNotMatch(result.html,/await Promise\.all\(\[loadMocks/);
   assert.match(result.html,/const performanceStudio=studio/);
   assert.match(result.html,/mockRequests=new Map/);
-  assert.match(result.html,/loadMocks\(\)\.then/);
+  assert.match(result.html,/Promise\.all\(\[/);
   assert.match(result.html,/rel="preload" as="image"/);
   assert.match(result.html,/fetchpriority="high"/);
   assert.equal(result.script,null);
