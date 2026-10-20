@@ -9,3 +9,25 @@ test('server prices, idempotency, stock rollback and private designs',async()=>{
 const d={id:'design-123',productId:p.id,layers:[{type:'image',asset:asset.id}]};r=await call(env,'/api/designs','POST',{id:d.id,design:d},{cookie});assert.equal(r.status,200);assert.equal((await call(env,'/api/designs','POST',{id:d.id,design:d},{cookie:other.cookie})).status,403);let pers=await(await call(env,'/api/bootstrap','GET',undefined,{cookie})).json();assert.equal(pers.designs.length,1);
 r=await call(env,'/api/cart','PUT',{items:[{...item,qty:p.stock}],revision:2},{cookie});assert.equal(r.status,200);r=await call(env,'/api/orders','POST',{cartRevision:3,requestKey:'test-no-stock-123',shipping},{cookie});assert.equal(r.status,409);assert.equal(env.db.prepare('SELECT COUNT(*) AS n FROM orders').get().n,1);assert.equal(env.db.prepare('SELECT stock FROM products WHERE id=?').get(p.id).stock,p.stock-1);env.db.close()});
 test('admin updates persist; customer role spoof and stale revisions rejected',async()=>{const env=environment();await call(env,'/api/bootstrap');const owner={'oai-authenticated-user-email':'owner@test.local'};let r=await call(env,'/api/admin/settings/campaign','PUT',{value:'Nội dung được lưu chung',revision:1},owner);assert.equal(r.status,200);assert.equal((await(await call(env,'/api/bootstrap')).json()).campaign,'Nội dung được lưu chung');assert.equal((await call(env,'/api/admin/settings/campaign','PUT',{value:'old',revision:1},owner)).status,409);const customer=await signup(env,'normal@example.test');assert.equal((await call(env,'/api/admin/settings/campaign','PUT',{value:'hack',revision:2,role:'admin'},{cookie:customer.cookie})).status,403);const bad=new Request(origin+'/api/auth/logout',{method:'POST',headers:{origin:'https://evil.test','content-type':'application/json'},body:'{}'});assert.equal((await worker.fetch(bad,env,{})).status,403);env.db.close()});
+
+test('keeps private uploaded images uncacheable while caching public UUID files',async()=>{
+  const env=environment();
+  await call(env,'/api/bootstrap');
+  const picture=new Uint8Array([137,80,78,71]);
+  const ownerHeaders={origin,'content-type':'image/png','content-length':'4','oai-authenticated-user-email':env.ADMIN_EMAIL};
+  const publicPost=await worker.fetch(new Request(origin+'/api/upload?public=1',{method:'POST',headers:ownerHeaders,body:picture}),env,{});
+  assert.equal(publicPost.status,201);
+  const publicUrl=(await publicPost.json()).url;
+  const publicGet=await worker.fetch(new Request(origin+publicUrl),env,{});
+  assert.equal(publicGet.status,200);
+  assert.match(publicGet.headers.get('cache-control'),/public.*max-age=31536000.*immutable/);
+  const customer=await signup(env,'private-photo@example.test');
+  const privatePost=await worker.fetch(new Request(origin+'/api/upload?public=0',{method:'POST',headers:{origin,cookie:customer.cookie,'content-type':'image/png','content-length':'4'},body:picture}),env,{});
+  assert.equal(privatePost.status,201);
+  const privateUrl=(await privatePost.json()).url;
+  const privateGet=await worker.fetch(new Request(origin+privateUrl,{headers:{cookie:customer.cookie}}),env,{});
+  assert.equal(privateGet.status,200);
+  assert.match(privateGet.headers.get('cache-control'),/private.*no-store/);
+  assert.equal((await worker.fetch(new Request(origin+privateUrl),env,{})).status,403);
+  env.db.close();
+});
