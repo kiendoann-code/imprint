@@ -7,8 +7,8 @@ function bad(status,message){const e=new Error(message);e.status=status;throw e}
 const integer=(x,min,max)=>Number.isInteger(x)&&x>=min&&x<=max;
 async function ensureTables(db){
   if(initialized.has(db))return;
-  await db.prepare("CREATE TABLE IF NOT EXISTS behavior_sessions (session_id TEXT PRIMARY KEY NOT NULL, visitor_id TEXT NOT NULL, started_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, engaged_ms INTEGER NOT NULL DEFAULT 0, page_views INTEGER NOT NULL DEFAULT 0, max_scroll INTEGER NOT NULL DEFAULT 0, interactions INTEGER NOT NULL DEFAULT 0, converted INTEGER NOT NULL DEFAULT 0)").run();
-  await db.prepare('CREATE INDEX IF NOT EXISTS behavior_sessions_started ON behavior_sessions(started_at)').run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS behavior_sessions (session_id TEXT PRIMARY KEY NOT NULL, visitor_id TEXT NOT NULL, started_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, engaged_ms INTEGER NOT NULL DEFAULT 0, page_views INTEGER NOT NULL DEFAULT 0, max_scroll INTEGER NOT NULL DEFAULT 0, interactions INTEGER NOT NULL DEFAULT 0, converted INTEGER NOT NULL DEFAULT 0)").bind().run();
+  await db.prepare('CREATE INDEX IF NOT EXISTS behavior_sessions_started ON behavior_sessions(started_at)').bind().run();
   initialized.add(db);
 }
 async function recordEvent(db,p){
