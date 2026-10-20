@@ -4,7 +4,25 @@ function updateHeader(){$('#count').textContent=data.cart.reduce((s,i)=>s+i.qty,
 function rememberSnapshot(){serverSnapshot=JSON.parse(JSON.stringify({products:data.products,campaign:data.campaign,coupons:data.coupons,feedback:data.feedback,collections:collectionItems(),orders:data.orders,designs:data.designs,cart:data.cart}));}
 async function refreshBackend({keepGuest=false}={}){const guest=keepGuest&&!user?data?.cart||[]:[];const result=await api('/api/bootstrap');user=result.user;cartRevision=result.cartRevision||0;data={...result,cart:result.user?result.cart:guest,users:[],catalogV5:true};rememberSnapshot();window.ImprintBehavior?.baselineCart();updateHeader();return result}
 async function uploadBlob(blob,publicFile=false,meta={}){const q=new URLSearchParams({public:publicFile?'1':'0',name:meta.name||'ảnh',width:meta.width||0,height:meta.height||0});const r=await fetch('/api/upload?'+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':blob.type},body:blob});const result=await r.json();if(!r.ok)throw Error(result.error||'Không tải được tệp.');return result}
-async function mediaRemote(src,publicFile=false){if(!src||!src.startsWith('data:'))return src;if(uploadedMedia.has(src))return uploadedMedia.get(src);const file=await(await fetch(src)).blob(),out=await uploadBlob(file,publicFile);uploadedMedia.set(src,out.url);return out.url}
+async function optimizePublicImage(blob){
+  if(!blob||!['image/jpeg','image/png','image/webp','image/avif'].includes(blob.type)||blob.size<180*1024)return blob;
+  let image;
+  try{
+    image=await createImageBitmap(blob);
+    const scale=Math.min(1,1800/Math.max(image.width,image.height));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(image.width*scale));
+    canvas.height=Math.max(1,Math.round(image.height*scale));
+    canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    image.close();image=null;
+    const optimized=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.84));
+    return optimized&&optimized.type==='image/webp'&&optimized.size<blob.size*.88?optimized:blob;
+  }catch(error){
+    console.warn('[ImPrint] Keep original image when optional optimization is unsupported.',error);
+    return blob;
+  }finally{if(image)image.close()}
+}
+async function mediaRemote(src,publicFile=false){if(!src||!src.startsWith('data:'))return src;if(uploadedMedia.has(src))return uploadedMedia.get(src);const file=await(await fetch(src)).blob(),ready=publicFile?await optimizePublicImage(file):file,out=await uploadBlob(ready,publicFile);uploadedMedia.set(src,out.url);return out.url}
 async function designRemote(d){const out=clone(d);for(const layer of [...out.layers,...Object.values(out.sides||{}).flatMap(s=>s.layers||[])]){if(!layer.asset)continue;let id=layer.asset;if(uploadedAssets.has(id)){layer.asset=uploadedAssets.get(id);continue}if(await get('assets',id)){const a=await get('assets',id);if(a.cloudId&&a.cloudOwner===user.id){layer.asset=a.cloudId;uploadedAssets.set(id,a.cloudId);continue}const r=await uploadBlob(a.original,false,{name:a.name,width:a.width,height:a.height});a.cloudId=r.id;a.cloudOwner=user.id;await put('assets',id,a);await put('assets',r.id,a);uploadedAssets.set(id,r.id);layer.asset=r.id}else{layer.asset=id}}return out}
 async function itemsRemote(items){const out=[];for(const item of items){const next=clone(item);if(next.design)next.design=await designRemote(next.design);next.preview=await mediaRemote(next.preview,false);out.push(next)}return out}
 const equalData=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
