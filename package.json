@@ -16,7 +16,8 @@
     "drizzle-kit": "0.31.4",
     "drizzle-orm": "0.44.5",
     "esbuild": "0.25.12",
-    "wrangler": "4.147.0"
+    "wrangler": "4.147.0",
+    "sharp": "0.35.4"
   },
   "engines": {
     "node": ">=24.0.0 <25"
