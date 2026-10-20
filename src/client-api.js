@@ -59,7 +59,7 @@ function renderImprintOrderQualityPanel(){
       table.appendChild(head);
       for(const o of report.exceptions){
         const tr=document.createElement('tr');
-        const currency=value=>Number.isFinite(Number(value))?new Intl.NumberFormat('vi-VN').format(Number(value))+'đ':'—';
+        const currency=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))?new Intl.NumberFormat('vi-VN').format(Number(value))+'đ':'Chưa có dữ liệu';
         for(const value of [o.id,o.accountEmail||'—',o.recipientName||'—',currency(o.subtotal),currency(o.total)]){
           const td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);
         }
