@@ -37,11 +37,14 @@ const lazyStudio=`// Defer Studio-only mockup decoding until the editor is actua
 const performanceStudio=studio;
 studio=function(...args){
   const result=performanceStudio(...args);
-  loadMocks().then(()=>{
+  Promise.all([
+    loadMocks(),
+    ...FONT_NAMES.map(name=>document.fonts.load('32px "'+name+'"'))
+  ]).then(()=>{
     if(location.hash.startsWith('#studio')&&document.getElementById('canvas')){
       try{draw()}catch(error){console.error('[ImPrint Studio mockups]',error)}
     }
-  }).catch(error=>console.error('[ImPrint Studio mockups]',error));
+  }).catch(error=>console.error('[ImPrint Studio assets]',error));
   return result;
 };
 `;
