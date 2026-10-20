@@ -54,10 +54,10 @@ const compactPath='/static/imprint-app-'+compactHash+'.js';
 html=html.replace(optimized.script.path,compactPath);
 fs.writeFileSync(output+'/public'+compactPath,compactApp.code);
 fs.writeFileSync(output+'/public/index.html',html);
-fs.writeFileSync(output+'/public/static/imprint-performance-20261021-v3.json',JSON.stringify({
-  release:'imprint-performance-20261021-v3',optimized:true,
+fs.writeFileSync(output+'/public/static/imprint-performance-20261021-v4.json',JSON.stringify({
+  release:'imprint-performance-20261021-v4',optimized:true,
   imageOptimization:{files:imageOptimization.stats.length,bytesSaved:imageOptimization.bytesSaved},
-  features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js','syntax-and-whitespace-minified-js','content-addressed-webp-image-optimization','viewport-gated-homepage-video']
+  features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js','syntax-and-whitespace-minified-js','content-addressed-webp-image-optimization','viewport-gated-homepage-video','ssr-home-no-unnecessary-product-image-fetches','memoized-worker-d1-initialization']
 }));
 fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=86400\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
