@@ -4,6 +4,34 @@ import crypto from 'node:crypto';
 
 const blockingInit=`const v4BaseInit=init;init=async function(){await Promise.all([loadMocks(),...FONT_NAMES.map(f=>document.fonts.load('32px "'+f+'"')),document.fonts.load('italic 32px "Lora"'),document.fonts.load('bold 32px "Lora"')]);`;
 const fastInit='const v4BaseInit=init;init=async function(){';
+const eagerMocks=`let mockImages={},mockPromise=null;
+function loadMocks(){if(mockPromise)return mockPromise;mockPromise=Promise.all(Object.entries(MOCKUPS).map(([k,v])=>new Promise(resolve=>{let im=new Image();im.onload=()=>{mockImages[k]=im;resolve()};im.onerror=resolve;im.src=v.src})));return mockPromise}`;
+const selectiveMocks=`let mockImages={},mockRequests=new Map();
+function loadMocks(){
+  const keys=new Set(['f_M']);
+  if(draft?.model){
+    keys.add(draft.model+'_M');
+    keys.add(draft.model+'_'+(draft.size||'M'));
+  }
+  if(typeof chosen!=='undefined'&&chosen?.model){
+    keys.add(chosen.model+'_M');
+    keys.add(chosen.model+'_'+(chosen.size||'M'));
+  }
+  const pending=[...keys].filter(key=>MOCKUPS[key]).map(key=>{
+    if(mockImages[key])return Promise.resolve();
+    if(!mockRequests.has(key)){
+      mockRequests.set(key,new Promise(resolve=>{
+        const im=new Image();
+        im.onload=()=>{mockImages[key]=im;resolve()};
+        im.onerror=()=>resolve();
+        im.src=MOCKUPS[key].src;
+      }));
+    }
+    return mockRequests.get(key);
+  });
+  return Promise.all(pending);
+}`;
+
 const initialBoot="init().catch(e=>{console.error(e);showImprintError('service')});";
 const lazyStudio=`// Defer Studio-only mockup decoding until the editor is actually opened.
 const performanceStudio=studio;
@@ -21,6 +49,8 @@ studio=function(...args){
 export function optimizePage(html,{externalizeScript=false}={}){
   if(!html.includes(blockingInit))throw Error('ImPrint startup contract changed; abort performance patch rather than silently altering behavior.');
   if(!html.includes(initialBoot))throw Error('ImPrint initialization contract changed; abort performance patch.');
+  if(!html.includes(eagerMocks))throw Error('ImPrint mockup loading contract changed; abort unsafe optimization.');
+  html=html.replace(eagerMocks,selectiveMocks);
   html=html.replace(blockingInit,fastInit);
   html=html.replace(initialBoot,lazyStudio+initialBoot);
   // The existing 6 bundled display fonts are still available; do not hide text
