@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import worker from '../src/backend.mjs';
 import {handleBehavior,recordBehaviorConversion} from '../src/user-behavior.mjs';
 import {environment} from './harness.mjs';
+import fs from 'node:fs';
 
 const ORIGIN='https://imprint.test';
 function request(path,method='GET',payload){
@@ -47,4 +48,65 @@ test('anonymous events, 7/30/90 ranges, privacy and order conversion',async()=>{
   const invalid=await worker.fetch(request('/api/behavior','POST',{...sample(),engagedMs:999999999}),env,{});
   assert.equal(invalid.status,400);
   env.db.close();
+});
+
+
+test('cart add events are idempotent and historic D1 orders remain separate from session analytics',async()=>{
+  const env=environment(),guest=sample(),admin={role:'admin'};
+  assert.equal((await worker.fetch(request('/api/behavior','POST',guest),env,{})).status,202);
+  const add={eventType:'add_to_cart',eventId:crypto.randomUUID(),sessionId:guest.sessionId,visitorId:guest.visitorId};
+  assert.equal((await worker.fetch(request('/api/behavior','POST',add),env,{})).status,202);
+  assert.equal((await worker.fetch(request('/api/behavior','POST',add),env,{})).status,202);
+  const second={...add,eventId:crypto.randomUUID()};
+  assert.equal((await worker.fetch(request('/api/behavior','POST',second),env,{})).status,202);
+  const invalid={...add,eventId:'not-uuid'};
+  assert.equal((await worker.fetch(request('/api/behavior','POST',invalid),env,{})).status,400);
+  const userId=crypto.randomUUID(),old=Date.now()-20*86400000;
+  env.db.prepare('INSERT INTO users(id,email,name,salt,password_hash,created_at) VALUES(?,?,?,?,?,?)')
+    .run(userId,'past-buyer@example.test','Khách cũ','salt','hash',old);
+  env.db.prepare('INSERT INTO orders(id,user_id,request_key,body,status,created_at) VALUES(?,?,?,?,?,?)')
+    .run('ORDER-OLD',userId,'historic-order-001','{}',5,old);
+  const body=await (await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json();
+  assert.equal(body.kpis.sessions,1);
+  assert.equal(body.kpis.addToCart,2);
+  assert.equal(body.historicalOrders.orders,1);
+  assert.equal(body.historicalOrders.buyers,1);
+  assert.equal(body.historicalOrders.daily.length,1);
+  const week=await (await handleBehavior(request('/api/admin/behavior?days=7'),env,admin)).json();
+  assert.equal(week.historicalOrders.orders,0);
+  assert.equal(week.kpis.addToCart,2);
+  env.db.close();
+});
+
+test('Cloudflare CSV backfill stores verified aggregates separately and is admin-only',async()=>{
+  const env=environment(),admin={role:'admin'};
+  const date=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const source={source:'cloudflare',rows:[{day:date,visitors:23,pageViews:78}]};
+  assert.equal((await worker.fetch(request('/api/admin/behavior/import-history','POST',source),env,{})).status,403);
+  const r=await handleBehavior(request('/api/admin/behavior/import-history','POST',source),env,admin);
+  assert.equal(r.status,200);
+  assert.equal((await r.json()).imported,1);
+  // Idempotent upsert: reimport should replace the same day, not duplicate it.
+  await handleBehavior(request('/api/admin/behavior/import-history','POST',source),env,admin);
+  const report=await(await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json();
+  assert.equal(report.importedAnalytics.importedDays,1);
+  assert.equal(report.importedAnalytics.pageViews,78);
+  assert.equal(report.importedAnalytics.dailyVisitors,23);
+  assert.equal(report.kpis.sessions,0);
+  assert.equal(report.kpis.visitors,0);
+  assert.equal(report.kpis.addToCart,0);
+  await assert.rejects(handleBehavior(request('/api/admin/behavior/import-history','POST',
+    {source:'cloudflare',rows:[{day:'2020-01-01',visitors:1,pageViews:1}]}),env,admin),{status:400});
+  await assert.rejects(handleBehavior(request('/api/admin/behavior/import-history','POST',
+    {source:'cloudflare',rows:[{day:date,visitors:-1,pageViews:1}]}),env,admin),{status:400});
+  env.db.close();
+});
+
+test('admin behavior client parses as valid JavaScript with an ImPrint-matching palette',()=>{
+  const source=fs.readFileSync('src/behavior-client.js','utf8');
+  assert.doesNotThrow(()=>new Function(source));
+  assert.match(source,/ip-behavior-import/);
+  assert.match(source,/background:#fffdfa/);
+  assert.match(source,/data-value/);
+  assert.match(source,/ignoreNextCartPersist/);
 });
