@@ -191,6 +191,7 @@
   function scan(){
     pendingScan=false;
     const select=document.getElementById('fontSelect');
+    if(select||document.querySelector('.font-library'))installStyles();
     if(select){
       if(fontSelectSeen!==select){fontSelectSeen=select;dismiss();enhanceSelect(select);}
     }else if(fontSelectSeen){fontSelectSeen=null;dismiss();}
@@ -202,7 +203,7 @@
     requestAnimationFrame(scan);
   }
   function start(){
-    if(installed)return;installed=true;installStyles();
+    if(installed)return;installed=true;
     document.addEventListener('pointerdown',e=>{
       if(activePicker&&!activePicker.root.contains(e.target))dismiss();
     });
