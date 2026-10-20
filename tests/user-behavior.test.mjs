@@ -42,7 +42,7 @@ test('anonymous events, 7/30/90 ranges, privacy and order conversion',async()=>{
   assert.equal((await worker.fetch(request('/api/admin/behavior?days=7'),env,{})).status,403);
   await assert.rejects(handleBehavior(request('/api/admin/behavior?days=31'),env,admin),{status:400});
   assert.equal((await worker.fetch(request('/api/behavior','POST',{...sample(),email:'ignored@example.test'}),env,{})).status,202);
-  const fields=Object.keys(env.db.prepare("PRAGMA table_info(behavior_sessions)").all()[0]);
+  const fields=env.db.prepare('PRAGMA table_info(behavior_sessions)').all().map(c=>c.name);
   assert(!fields.includes('email'));
   const invalid=await worker.fetch(request('/api/behavior','POST',{...sample(),engagedMs:999999999}),env,{});
   assert.equal(invalid.status,400);
