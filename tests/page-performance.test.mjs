@@ -4,9 +4,11 @@ import {optimizePage} from '../scripts/optimize-page.mjs';
 
 const marker=`const v4BaseInit=init;init=async function(){await Promise.all([loadMocks(),...FONT_NAMES.map(f=>document.fonts.load('32px "'+f+'"')),document.fonts.load('italic 32px "Lora"'),document.fonts.load('bold 32px "Lora"')]);`;
 const boot="init().catch(e=>{console.error(e);showImprintError('service')});";
+const mockLoader=`let mockImages={},mockPromise=null;
+function loadMocks(){if(mockPromise)return mockPromise;mockPromise=Promise.all(Object.entries(MOCKUPS).map(([k,v])=>new Promise(resolve=>{let im=new Image();im.onload=()=>{mockImages[k]=im;resolve()};im.onerror=resolve;im.src=v.src})));return mockPromise}`;
 function fixture(){
   return '<!doctype html><html><head><style>@font-face{font-family:"Lora";font-display:block}</style></head><body>'+
-    '<main><div id="product-layout">Unchanged product design</div></main><script>'+
+    '<main><div id="product-layout">Unchanged product design</div></main><script>'+mockLoader+
     'const HERO_IMAGE="/static/'+'a'.repeat(64)+'.webp";'+
     'const image=\'<img src="${HERO_IMAGE}" alt="ImPrint">\';'+
     marker+'await v4BaseInit();};'+boot+'</script></body></html>';
@@ -19,6 +21,7 @@ test('keeps HTML/design intact while unblocking first paint',()=>{
   assert.doesNotMatch(result.html,/font-display:block/);
   assert.doesNotMatch(result.html,/await Promise\.all\(\[loadMocks/);
   assert.match(result.html,/const performanceStudio=studio/);
+  assert.match(result.html,/mockRequests=new Map/);
   assert.match(result.html,/loadMocks\(\)\.then/);
   assert.match(result.html,/rel="preload" as="image"/);
   assert.match(result.html,/fetchpriority="high"/);
