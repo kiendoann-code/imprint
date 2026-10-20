@@ -1,4 +1,5 @@
 import {prepareAdminBuild} from './build-admin-assets.mjs';
+import {optimizePage} from './optimize-page.mjs';
 import {build} from 'esbuild';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
