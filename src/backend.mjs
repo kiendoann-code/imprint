@@ -54,7 +54,7 @@ if(path==='/api/admin/accounts'&&req.method==='POST'){
   requireAdmin(u);
   if(u.id!==ADMIN_ID)fail(403,'Chỉ quản trị chính được cấp tài khoản quản trị mới.');
   const p=await body(req,10000),email=text(p.email,254).toLowerCase(),name=text(p.name,80)||'Quản trị',password=p.password;
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||typeof password!=='string'||password.length<14||password.length>128)fail(400,'Cần email hợp lệ và mật khẩu từ 14 đến 128 ký tự.');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||typeof password!=='string'||password.length<14||password.length>128)fail(400,'Cần email hợp lệ và mật khẩu từ 14 đến 128 ký tự.');
   if(email===env.ADMIN_EMAIL?.toLowerCase())fail(409,'Email này đang được dùng bởi quản trị chính.');
   await limit(db,'admin-create:'+u.id,12);
   const salt=random(),id=crypto.randomUUID(),hash=await passwordHash(password,salt);
