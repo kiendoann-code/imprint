@@ -20,7 +20,55 @@ const checkoutBeforeBackend=checkout;checkout=function(){checkoutBeforeBackend()
 let orderRequestKey=null;placeOrder=async function(){if(busy||!user||!data.cart.length)return;busy=true;$('#placeBtn').disabled=true;try{await persist();orderRequestKey||=crypto.randomUUID();const shipping=Object.fromEntries(['fullName','phone','city','ward','address','note'].map(k=>[k,$('#'+k).value.trim()]));const order=await api('/api/orders','POST',{shipping,coupon,cartRevision,requestKey:orderRequestKey,behaviorSessionId:window.ImprintBehavior?.sessionId()||null,behaviorVisitorId:window.ImprintBehavior?.visitorId()||null});orderRequestKey=null;coupon='';await refreshBackend();go('account');toast('Đã gửi đơn '+order.id+' đến ImPrint.')}catch(e){toast(e.message);if($('#placeBtn'))$('#placeBtn').disabled=false}finally{busy=false}};
 const adminBeforeBackend=admin;admin=function(){if(user?.role==='admin'){adminBeforeBackend();const notice=app.querySelector('.notice');if(notice)notice.textContent='Nội dung được lưu trên máy chủ và hiển thị cho khách. Đơn hàng, ảnh gốc và thiết kế được lưu chung.';
 if(user.id==='site-owner')app.insertAdjacentHTML('beforeend',`<section class="wrap section"><div class="panel"><details><summary><strong>Tài khoản quản trị bổ sung</strong></summary><p class="muted">Chỉ quản trị chính có thể cấp tài khoản. Mỗi tài khoản có quyền quản trị cửa hàng và mật khẩu riêng.</p><form onsubmit="createSecondaryImprintAdmin(event)"><label>Email quản trị</label><input type="email" name="email" required autocomplete="off" placeholder="admin@example.com"><label>Tên hiển thị</label><input type="text" name="name" maxlength="80" placeholder="Quản trị"><label>Mật khẩu (14–128 ký tự)</label><input type="password" name="password" minlength="14" maxlength="128" required autocomplete="new-password"><button type="submit" class="button primary">Tạo tài khoản admin</button></form></details></div></section>`);
-return}app.innerHTML=`<div class="wrap section admin-login-layout"><div><div class="eyebrow">IMPRINT · QUẢN TRỊ</div><h1>Quản lý cửa hàng.</h1><p>Đăng nhập bằng email và mật khẩu quản trị để quản lý cửa hàng.</p></div><div class="panel"><h2>Đăng nhập quản trị</h2><p>Chỉ tài khoản chủ website có quyền truy cập.</p><button class="button primary" onclick="auth(false)">Đăng nhập quản trị</button><p class="muted">Tài khoản quản trị do chủ cửa hàng thiết lập.</p></div></div>`};
+renderImprintOrderQualityPanel();return}app.innerHTML=`<div class="wrap section admin-login-layout"><div><div class="eyebrow">IMPRINT · QUẢN TRỊ</div><h1>Quản lý cửa hàng.</h1><p>Đăng nhập bằng email và mật khẩu quản trị để quản lý cửa hàng.</p></div><div class="panel"><h2>Đăng nhập quản trị</h2><p>Chỉ tài khoản chủ website có quyền truy cập.</p><button class="button primary" onclick="auth(false)">Đăng nhập quản trị</button><p class="muted">Tài khoản quản trị do chủ cửa hàng thiết lập.</p></div></div>`};
+function renderImprintOrderQualityPanel(){
+  if(document.getElementById('imprint-order-quality'))return;
+  const section=document.createElement('section');
+  section.id='imprint-order-quality';
+  section.className='wrap section';
+  section.innerHTML='<div class="panel"><h2>Đối soát tài khoản và người nhận</h2>'+
+    '<p class="muted">Một tài khoản có thể đặt nhiều đơn cho những người nhận khác nhau. Thông tin này không tạo thêm tài khoản hoặc khách hàng đã xác minh. Đơn giá trị 0đ được giữ nguyên để đối soát.</p>'+
+    '<p data-quality-summary>Đang lấy số liệu…</p><details><summary>Thông tin nhận hàng gần đây</summary><div data-quality-recipients></div></details>'+
+    '<details><summary>Danh sách đơn cần đối soát giá trị</summary><div data-quality-exceptions></div></details></div>';
+  app.appendChild(section);
+  const to=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const from=new Date(Date.now()-364*86400000+7*3600000).toISOString().slice(0,10);
+  api('/api/admin/analytics?from='+from+'&to='+to).then(report=>{
+    if(!section.isConnected)return;
+    section.querySelector('[data-quality-summary]').textContent='Trong 365 ngày: '+report.kpis.buyers+' tài khoản đặt hàng · '+report.kpis.shippingProfiles+' hồ sơ nhận hàng khác nhau · '+report.kpis.zeroValueOrders+' đơn có giá trị 0đ hoặc thiếu giá. Số người nhận không phải số khách mua đã xác minh.';
+    const recipients=section.querySelector('[data-quality-recipients]');
+    if(!report.recipients.length){recipients.textContent='Chưa có thông tin người nhận.'}
+    else{
+      const table=document.createElement('table'),head=document.createElement('tr');
+      for(const label of ['Người nhận','Điện thoại','Địa chỉ','Số đơn']){const cell=document.createElement('th');cell.textContent=label;head.appendChild(cell)}
+      table.appendChild(head);
+      for(const r of report.recipients){
+        const tr=document.createElement('tr');
+        for(const value of [r.name||'—',r.phone||'—',r.address||'—',r.orders]){
+          const td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      recipients.appendChild(table);
+    }
+    const exceptions=section.querySelector('[data-quality-exceptions]');
+    if(!report.exceptions.length){exceptions.textContent='Không phát hiện đơn thiếu giá trong khoảng đã chọn.'}
+    else{
+      const table=document.createElement('table'),head=document.createElement('tr');
+      for(const label of ['Mã đơn','Email tài khoản gốc','Người nhận','Tạm tính','Tổng']){const cell=document.createElement('th');cell.textContent=label;head.appendChild(cell)}
+      table.appendChild(head);
+      for(const o of report.exceptions){
+        const tr=document.createElement('tr');
+        const currency=value=>Number.isFinite(Number(value))?new Intl.NumberFormat('vi-VN').format(Number(value))+'đ':'—';
+        for(const value of [o.id,o.accountEmail||'—',o.recipientName||'—',currency(o.subtotal),currency(o.total)]){
+          const td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      exceptions.appendChild(table);
+    }
+  }).catch(error=>{if(section.isConnected)section.querySelector('[data-quality-summary]').textContent=error.message||'Không tải được báo cáo đối soát.'});
+}
 window.createSecondaryImprintAdmin=async function(event){
   event.preventDefault();
   const form=event.currentTarget,button=form.querySelector('button[type=submit]');
