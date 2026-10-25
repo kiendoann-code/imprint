@@ -27,7 +27,7 @@ async function designRemote(d){const out=clone(d);for(const layer of [...out.lay
 async function itemsRemote(items){const out=[];for(const item of items){const next=clone(item);if(next.design)next.design=await designRemote(next.design);next.preview=await mediaRemote(next.preview,false);out.push(next)}return out}
 const equalData=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 async function syncAdmin(){const before=serverSnapshot;for(let i=0;i<data.products.length;i++){let p=data.products[i],old=before.products.find(x=>x.id===p.id);if(!old||!equalData(p,old)){p=clone(p);p.img=await mediaRemote(p.img,true);const updated=await api('/api/admin/products'+(old?'/'+p.id:''),old?'PUT':'POST',p);data.products[i]=updated;const pos=before.products.findIndex(x=>x.id===p.id);if(pos>=0)before.products[pos]=clone(updated);else before.products.push(clone(updated))}}for(const old of before.products.slice())if(!data.products.some(p=>p.id===old.id)){await api('/api/admin/products/'+old.id,'DELETE',{});before.products=before.products.filter(p=>p.id!==old.id)}for(const key of ['campaign','coupons','feedback','collections']){const value=key==='collections'?collectionItems():data[key];if(equalData(value,before[key]))continue;let next=clone(value);if(key==='feedback')for(const f of next)f.img=await mediaRemote(f.img,true);if(key==='collections')for(const c of next)if(c.kind!=='youtube')c.src=await mediaRemote(c.src,true);const result=await api('/api/admin/settings/'+key,'PUT',{value:next,revision:data.revisions[key]});data[key]=next;data.revisions[key]=result.revision;before[key]=clone(next)}for(let i=0;i<data.orders.length;i++){const o=data.orders[i],old=before.orders.find(x=>x.id===o.id);if(old&&(old.status!==o.status||old.tracking!==o.tracking)){const saved=await api('/api/admin/orders/'+o.id,'PUT',{status:o.status,tracking:o.tracking});data.orders[i]=saved;before.orders[before.orders.findIndex(x=>x.id===o.id)]=clone(saved)}}}
-async function syncCustomer(){if(!equalData(data.cart,serverSnapshot.cart)){const out=await api('/api/cart','PUT',{items:await itemsRemote(data.cart),revision:cartRevision});data.cart=out.items;cartRevision=out.revision;serverSnapshot.cart=clone(out.items)}for(let i=0;i<data.designs.length;i++){const d=data.designs[i],old=serverSnapshot.designs.find(x=>x.id===d.id);if(!old||!equalData(d,old)){const saved=await api('/api/designs','POST',{id:d.id,design:await designRemote(d.design)});data.designs[i]=saved;const pos=serverSnapshot.designs.findIndex(x=>x.id===d.id);if(pos>=0)serverSnapshot.designs[pos]=clone(saved);else serverSnapshot.designs.push(clone(saved))}}for(const old of serverSnapshot.designs.slice())if(!data.designs.some(d=>d.id===old.id)){await api('/api/designs/'+old.id,'DELETE',{});serverSnapshot.designs=serverSnapshot.designs.filter(d=>d.id!==old.id)}}
+async function syncCustomer(){if(!equalData(data.cart,serverSnapshot.cart)){const submittedCart=clone(data.cart);const out=await api('/api/cart','PUT',{items:await itemsRemote(submittedCart),revision:cartRevision});const submittedById=new Map(submittedCart.map(i=>[i.id,i])),savedById=new Map(out.items.map(i=>[i.id,i]));data.cart=data.cart.map(i=>submittedById.has(i.id)&&savedById.has(i.id)&&equalData(i,submittedById.get(i.id))?savedById.get(i.id):i);cartRevision=out.revision;serverSnapshot.cart=clone(out.items)}for(let i=0;i<data.designs.length;i++){const d=data.designs[i],old=serverSnapshot.designs.find(x=>x.id===d.id);if(!old||!equalData(d,old)){const saved=await api('/api/designs','POST',{id:d.id,design:await designRemote(d.design)});data.designs[i]=saved;const pos=serverSnapshot.designs.findIndex(x=>x.id===d.id);if(pos>=0)serverSnapshot.designs[pos]=clone(saved);else serverSnapshot.designs.push(clone(saved))}}for(const old of serverSnapshot.designs.slice())if(!data.designs.some(d=>d.id===old.id)){await api('/api/designs/'+old.id,'DELETE',{});serverSnapshot.designs=serverSnapshot.designs.filter(d=>d.id!==old.id)}}
 persist=function(){const job=async()=>{if(!backendReady)return true;try{if(user?.role==='admin')await syncAdmin();else if(user)await syncCustomer();else await put('state','guest-cart',data.cart);updateHeader();return true}catch(e){toast(e.message);throw e}};const task=syncQueue.then(job);syncQueue=task.catch(()=>{});return task};
 const oldGetBackend=get;get=async function(store,key){const cached=await oldGetBackend(store,key);if(store!=='assets'||cached||!backendReady)return cached;if(!user)return null;const r=await fetch('/api/files/'+key,{credentials:'same-origin'});if(!r.ok)throw Error('Không tải được ảnh gốc. Hãy đăng nhập lại.');const original=await r.blob(),im=await createImageBitmap(original),scale=Math.min(1,1800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);c.getContext('2d').drawImage(im,0,0,c.width,c.height);const a={original,preview:await new Promise(res=>c.toBlob(res,'image/png')),width:im.width,height:im.height,name:'Ảnh đã lưu',cloudId:key,cloudOwner:user.id};im.close();await put('assets',key,a);return a};
 const authBeforeBackend=auth;auth=function(register=false,adminLogin=false){if(adminLogin){if($('#modal').open)$('#modal').close();go('admin');return}authBeforeBackend(register,false);const note=$('#modal .muted');if(note)note.textContent='Đăng nhập để lưu thiết kế, giỏ hàng và theo dõi đơn trên mọi thiết bị.'};
@@ -3186,3 +3186,158 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
     observer.observe(observeRoot,{childList:true,subtree:true});
     requestAnimationFrame(installAdminSizeGuideUpload);
 })();
+
+/* ImPrint cart safety: idempotent confirmation, optimistic edits, bulk recovery. */
+(function () {
+  'use strict';
+  let confirming = false;
+  let addingPlain = false;
+  let confirmedDraftId = null;
+
+  const beforeConfirm = confirmDesign;
+  confirmDesign = async function () {
+    if (confirming) return;
+    // Repeated clicks after a completed confirmation must not create another row.
+    if (draft?.id && draft.id === confirmedDraftId && !editCartId) {
+      go('cart');
+      return;
+    }
+    confirming = true;
+    const button = document.querySelector('button[onclick="confirmDesign()"]');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Đang thêm vào giỏ…';
+    }
+    const draftId = draft?.id;
+    try {
+      // Assign a stable cart-item ID before any upload. If saving fails, retry
+      // updates the same row rather than appending another item.
+      if ($('#rights')?.checked && (!$('#acceptQuality') || $('#acceptQuality').checked) && !editCartId) {
+        editCartId = uid();
+      }
+      await beforeConfirm();
+      if (location.hash === '#cart') confirmedDraftId = draftId;
+    } finally {
+      confirming = false;
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.textContent = 'Xác nhận & thêm vào giỏ';
+      }
+    }
+  };
+
+  const beforePlain = addPlain;
+  addPlain = async function () {
+    if (addingPlain) return;
+    addingPlain = true;
+    const countBefore = data.cart.length;
+    try {
+      // A failed save leaves a local row. Retry its synchronization instead
+      // of calling addPlain again and generating another row.
+      if (addPlain.pendingId && data.cart.some(item => item.id === addPlain.pendingId)) {
+        await persist();
+        addPlain.pendingId = null;
+        go('cart');
+        return;
+      }
+      await beforePlain();
+      addPlain.pendingId = null;
+    } catch (error) {
+      if (data.cart.length > countBefore) addPlain.pendingId = data.cart[data.cart.length - 1]?.id;
+      throw error;
+    } finally {
+      addingPlain = false;
+    }
+  };
+
+  function duplicateCartIds() {
+    const seen = new Set();
+    const duplicateIds = [];
+    for (const item of data.cart) {
+      // Plain garments can be deliberately added more than once; don't auto-
+      // classify these as duplicates. Only exactly matching custom designs.
+      if (!item.design?.id) continue;
+      const d = item.design;
+      const key = JSON.stringify([
+        item.product?.id, item.color, item.size, item.sleeveColor, item.model,
+        d.id, d.productId, d.color, d.size, d.side, d.model,
+        d.sleeveColor, d.layers, d.sides, d.placement
+      ]);
+      if (seen.has(key)) duplicateIds.push(item.id);
+      else seen.add(key);
+    }
+    return duplicateIds;
+  }
+
+  function redrawCart() {
+    updateHeader();
+    if (location.hash === '#cart') cart();
+    else if (location.hash === '#checkout') checkout();
+  }
+
+  async function saveCartChange() {
+    try {
+      await persist();
+    } catch (error) {
+      // Keep the customer's intended change visible; don't silently restore
+      // stale items. A subsequent edit/retry will attempt synchronization.
+      toast('Giỏ chưa đồng bộ với máy chủ. Kiểm tra kết nối và thử lại.');
+    }
+  }
+
+  removeItem = function (id) {
+    if (!data.cart.some(item => item.id === id)) return;
+    data.cart = data.cart.filter(item => item.id !== id);
+    redrawCart();
+    return saveCartChange();
+  };
+
+  quantity = function (id, delta) {
+    const item = data.cart.find(entry => entry.id === id);
+    if (!item) return;
+    const product = data.products.find(p => p.id === item.product?.id);
+    if (item.qty + delta < 1 || item.qty + delta > (product?.stock || 0)) {
+      toast('Số lượng vượt tồn kho.');
+      return;
+    }
+    item.qty += delta;
+    redrawCart();
+    return saveCartChange();
+  };
+
+  const beforeCart = cart;
+  cart = function () {
+    beforeCart();
+    if (!data.cart.length) return;
+    const rows = app.querySelector('.checkout > div:first-child');
+    if (!rows) return;
+    const toolbar = document.createElement('div');
+    toolbar.className = 'row imprint-cart-cleanup';
+    toolbar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px';
+    const duplicates = duplicateCartIds();
+
+    function action(label, callback) {
+      const button = document.createElement('button');
+      button.className = 'quiet';
+      button.type = 'button';
+      button.textContent = label;
+      button.addEventListener('click', callback);
+      toolbar.appendChild(button);
+    }
+    if (duplicates.length) action('Dọn ' + duplicates.length + ' sản phẩm trùng', () => {
+      if (!confirm('Giữ lại một bản cho mỗi thiết kế trùng khớp và xóa các bản dư?')) return;
+      const ids = new Set(duplicateCartIds());
+      data.cart = data.cart.filter(item => !ids.has(item.id));
+      redrawCart();
+      void saveCartChange();
+    });
+    action('Xóa toàn bộ giỏ', () => {
+      if (!confirm('Xóa toàn bộ ' + data.cart.length + ' sản phẩm trong giỏ? Thao tác không thể hoàn tác.')) return;
+      data.cart = [];
+      redrawCart();
+      void saveCartChange();
+    });
+    rows.prepend(toolbar);
+  };
+})();
+

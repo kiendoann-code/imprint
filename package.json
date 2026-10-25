@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test tests/backend.test.mjs tests/cloudflare-auth.test.mjs tests/design-library.test.mjs tests/studio-font-pack.test.mjs tests/library-asset-privacy.test.mjs tests/vector-library-pack.test.mjs tests/user-behavior.test.mjs tests/page-performance.test.mjs tests/performance-assets.test.mjs tests/lcp-homepage.test.mjs",
+    "test": "node --test tests/backend.test.mjs tests/cloudflare-auth.test.mjs tests/design-library.test.mjs tests/studio-font-pack.test.mjs tests/library-asset-privacy.test.mjs tests/vector-library-pack.test.mjs tests/user-behavior.test.mjs tests/page-performance.test.mjs tests/performance-assets.test.mjs tests/lcp-homepage.test.mjs tests/cart-safety.test.mjs",
     "dev": "npm run build && node scripts/local-server.mjs",
     "dev:admin": "npm run build && node scripts/local-server.mjs --admin",
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
