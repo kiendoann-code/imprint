@@ -8,14 +8,19 @@ const eagerMocks=`let mockImages={},mockPromise=null;
 function loadMocks(){if(mockPromise)return mockPromise;mockPromise=Promise.all(Object.entries(MOCKUPS).map(([k,v])=>new Promise(resolve=>{let im=new Image();im.onload=()=>{mockImages[k]=im;resolve()};im.onerror=resolve;im.src=v.src})));return mockPromise}`;
 const selectiveMocks=`let mockImages={},mockRequests=new Map();
 function loadMocks(){
+  // Keep the homepage's default preview fast, but request the exact active
+  // Studio asset. Non-tee and rear previews are NOT model_size keys.
   const keys=new Set(['f_M']);
-  if(draft?.model){
-    keys.add(draft.model+'_M');
-    keys.add(draft.model+'_'+(draft.size||'M'));
+  if(typeof draft!=='undefined'&&draft?.productId&&typeof modelKey==='function'){
+    try{keys.add(modelKey())}catch(error){console.warn('[ImPrint mock key]',error)}
   }
-  if(typeof chosen!=='undefined'&&chosen?.model){
-    keys.add(chosen.model+'_M');
-    keys.add(chosen.model+'_'+(chosen.size||'M'));
+  // Product detail previews also use garment-specific keys, except basic tees.
+  if(typeof chosen!=='undefined'&&chosen?.id&&typeof data!=='undefined'){
+    const p=data.products?.find(product=>product.id===chosen.id);
+    if(p){
+      const type=typeOf(p),model=allowedModel(p,chosen.model||'f');
+      keys.add(type==='tee'?model+'_'+(chosen.size||p.sizes?.[0]||'M'):type+'_'+model);
+    }
   }
   const pending=[...keys].filter(key=>MOCKUPS[key]).map(key=>{
     if(mockImages[key])return Promise.resolve();
@@ -23,7 +28,7 @@ function loadMocks(){
       mockRequests.set(key,new Promise(resolve=>{
         const im=new Image();
         im.onload=()=>{mockImages[key]=im;resolve()};
-        im.onerror=()=>resolve();
+        im.onerror=()=>{console.warn('[ImPrint mock image failed]',key);resolve()};
         im.src=MOCKUPS[key].src;
       }));
     }
