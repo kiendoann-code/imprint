@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {optimizePage} from '../scripts/optimize-page.mjs';
 
 const marker=`const v4BaseInit=init;init=async function(){await Promise.all([loadMocks(),...FONT_NAMES.map(f=>document.fonts.load('32px "'+f+'"')),document.fonts.load('italic 32px "Lora"'),document.fonts.load('bold 32px "Lora"')]);`;
@@ -66,4 +67,49 @@ test('avoids a synchronous carousel layout read without changing its sizing math
   assert.match(result.html,/entries\[0\]\?\.contentRect\.width/);
   assert.match(result.html,/const cw=Math\.min\(210,\(width\*\.8\)/);
   assert.doesNotMatch(result.html,/observer\.observe\(scene\);fit\(\)/);
+});
+
+function simulatedMockSources({draft=null,chosen=null,products=[],imageKeys=[]}){
+  const optimized=optimizePage(fixture()).html;
+  const start=optimized.indexOf('let mockImages={},mockRequests=new Map();');
+  const end=optimized.indexOf('const HERO_IMAGE=',start);
+  assert.ok(start>=0&&end>start,'selective mock loader is present');
+  const sources=[];
+  class MockImage{
+    set src(source){sources.push(source);queueMicrotask(()=>this.onload?.())}
+  }
+  const mockups=Object.fromEntries(imageKeys.map(key=>[key,{src:'/mock/'+key+'.webp'}]));
+  const context={
+    MOCKUPS:mockups,Image:MockImage,draft,chosen,data:{products},console,
+    modelKey:()=>draft.side==='Mặt sau'?'longsleeve_m_back':'longsleeve_m',
+    typeOf:p=>p.garmentType,
+    allowedModel:(_p,m)=>m
+  };
+  return Promise.resolve(vm.runInNewContext(optimized.slice(start,end)+'\nloadMocks()',context)).then(()=>sources);
+}
+
+test('loads the selected rear photo rather than tee-sized images on mobile Studio',async()=>{
+  const sources=await simulatedMockSources({
+    draft:{productId:'longsleeve',model:'m',size:'L',side:'Mặt sau'},
+    imageKeys:['f_M','m_M','m_L','longsleeve_m','longsleeve_m_back']
+  });
+  assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/longsleeve_m_back.webp'].sort());
+});
+
+test('loads the correct front garment for non-tee product detail previews',async()=>{
+  const sources=await simulatedMockSources({
+    chosen:{id:'longsleeve',model:'m',size:'L'},
+    products:[{id:'longsleeve',garmentType:'longsleeve',sizes:['S','M','L']}],
+    imageKeys:['f_M','m_L','longsleeve_m','longsleeve_m_back']
+  });
+  assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/longsleeve_m.webp'].sort());
+});
+
+test('preserves size-specific tee previews in product details',async()=>{
+  const sources=await simulatedMockSources({
+    chosen:{id:'tee',model:'m',size:'L'},
+    products:[{id:'tee',garmentType:'tee',sizes:['S','M','L']}],
+    imageKeys:['f_M','m_L','longsleeve_m']
+  });
+  assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/m_L.webp'].sort());
 });
