@@ -14,13 +14,12 @@ function loadMocks(){
   if(typeof draft!=='undefined'&&draft?.productId&&typeof modelKey==='function'){
     try{keys.add(modelKey())}catch(error){console.warn('[ImPrint mock key]',error)}
   }
-  // Direct /san-pham/:id requests may run before `chosen` is populated by
-  // routing/bootstrap. Use the route and catalog to load the first preview.
-  // This is intentionally scoped to product pages, not the entire catalog.
-  const productRoute=typeof location!=='undefined'
-    ?location.pathname.match(/^\/san-pham\/([^/]+)\/?$/):null;
-  if(productRoute){
-    const id=decodeURIComponent(productRoute[1]);
+  // Direct product routes may run before chosen is populated by
+  // routing/bootstrap. Only preload the matching catalog item.
+  const segments=typeof location!=='undefined'
+    ?location.pathname.split('/').filter(Boolean):[];
+  if(segments.length===2&&segments[0]==='san-pham'){
+    const id=decodeURIComponent(segments[1]);
     const p=typeof data!=='undefined' ? data.products?.find(item=>item.id===id):null;
     const type=p?typeOf(p):(['tee','heavy','core'].includes(id)?'tee':id);
     const selected=typeof chosen!=='undefined'&&chosen?.id===id?chosen:null;
