@@ -69,7 +69,7 @@ test('avoids a synchronous carousel layout read without changing its sizing math
   assert.doesNotMatch(result.html,/observer\.observe\(scene\);fit\(\)/);
 });
 
-function simulatedMockSources({draft=null,chosen=null,products=[],imageKeys=[]}){
+function simulatedMockSources({draft=null,chosen=null,products=[],imageKeys=[],pathname='/'}){
   const optimized=optimizePage(fixture()).html;
   const start=optimized.indexOf('let mockImages={},mockRequests=new Map();');
   const end=optimized.indexOf('const HERO_IMAGE=',start);
@@ -80,7 +80,7 @@ function simulatedMockSources({draft=null,chosen=null,products=[],imageKeys=[]})
   }
   const mockups=Object.fromEntries(imageKeys.map(key=>[key,{src:'/mock/'+key+'.webp'}]));
   const context={
-    MOCKUPS:mockups,Image:MockImage,draft,chosen,data:{products},console,
+    MOCKUPS:mockups,Image:MockImage,draft,chosen,data:{products},console,location:{pathname},
     modelKey:()=>draft.side==='Mặt sau'?'longsleeve_m_back':'longsleeve_m',
     typeOf:p=>p.garmentType,
     allowedModel:(_p,m)=>m
@@ -112,4 +112,26 @@ test('preserves size-specific tee previews in product details',async()=>{
     imageKeys:['f_M','m_L','longsleeve_m']
   });
   assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/m_L.webp'].sort());
+});
+
+test('direct Core product URL preloads the correct first garment preview before chosen is ready',async()=>{
+  const optimized=optimizePage(fixture()).html;
+  assert.ok(optimized.includes("if(typeof location!=='undefined'&&location.pathname.startsWith('/san-pham/'))await loadMocks();"));
+  const sources=await simulatedMockSources({
+    pathname:'/san-pham/core',
+    chosen:null,
+    products:[{id:'core',garmentType:'tee',sizes:['S','M','L']}],
+    imageKeys:['f_M','f_S','m_S','hoodie_f']
+  });
+  assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/f_S.webp'].sort());
+});
+
+test('direct Hoodie product URL preloads garment-specific model image',async()=>{
+  const sources=await simulatedMockSources({
+    pathname:'/san-pham/hoodie',
+    chosen:null,
+    products:[{id:'hoodie',garmentType:'hoodie',sizes:['S','M']}],
+    imageKeys:['f_M','f_S','hoodie_f','hoodie_m']
+  });
+  assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/hoodie_f.webp'].sort());
 });
