@@ -20,7 +20,7 @@ function loadMocks(){
     ?location.pathname.split('/').filter(Boolean):[];
   if(segments.length===2&&segments[0]==='san-pham'){
     const id=decodeURIComponent(segments[1]);
-    const p=typeof data!=='undefined' ? data.products?.find(item=>item.id===id):null;
+    const p=typeof data!=='undefined' ? data?.products?.find(item=>item.id===id):null;
     const type=p?typeOf(p):(['tee','heavy','core'].includes(id)?'tee':id);
     const selected=typeof chosen!=='undefined'&&chosen?.id===id?chosen:null;
     const model=p?allowedModel(p,selected?.model||'f'):(selected?.model||'f');
@@ -41,7 +41,7 @@ function loadMocks(){
       mockRequests.set(key,new Promise(resolve=>{
         const im=new Image();
         im.onload=()=>{mockImages[key]=im;resolve()};
-        im.onerror=()=>{console.warn('[ImPrint mock image failed]',key);resolve()};
+        im.onerror=()=>{console.warn('[ImPrint mock image failed]',key);mockRequests.delete(key);resolve()};
         im.src=MOCKUPS[key].src;
       }));
     }
@@ -73,6 +73,16 @@ export function optimizePage(html,{externalizeScript=false}={}){
   if(!html.includes(initialBoot))throw Error('ImPrint initialization contract changed; abort performance patch.');
   if(!html.includes(eagerMocks))throw Error('ImPrint mockup loading contract changed; abort unsafe optimization.');
   html=html.replace(eagerMocks,selectiveMocks);
+  // Never blank all product previews when a large optimized mockup fails to
+  // download/decode or a color variant has no validated recolor mask.
+  // Reuse the original catalog image; don't invent a rear/color view.
+  if(html.includes('function modelVariantImage(')){
+    if(!html.includes("const im=variantPhoto();if(!im)throw Error('Chưa tải được ảnh mẫu. Hãy tải lại trang.');const c=document.createElement('canvas');c.width=c.height=600;c.getContext('2d').drawImage(im,0,0,600,600);return c.toDataURL('image/webp',.9)"))throw Error('ImPrint product gallery contract changed; abort unsafe fallback patch.');
+    html=html.replace("const im=variantPhoto();if(!im)throw Error('Chưa tải được ảnh mẫu. Hãy tải lại trang.');const c=document.createElement('canvas');c.width=c.height=600;c.getContext('2d').drawImage(im,0,0,600,600);return c.toDataURL('image/webp',.9)","let im;try{im=variantPhoto()}catch(error){console.warn('[ImPrint gallery variant failed]',p.id,error)}if(!im){console.warn('[ImPrint gallery mock image unavailable]',p.id,chosen.model,chosen.size);return p.img}try{const c=document.createElement('canvas');c.width=c.height=600;c.getContext('2d').drawImage(im,0,0,600,600);return c.toDataURL('image/webp',.9)}catch(error){console.warn('[ImPrint gallery canvas failed]',p.id,error);return p.img}");
+    if(!html.includes("const label=chosen.model==='m'?'Nam':'Nữ',images=[{src:modelVariantImage(p,'Mặt trước'),kind:'mockup',alt:p.name+' · '+label+' · Mặt trước'},{src:modelVariantImage(p,'Mặt sau'),kind:'mockup',alt:p.name+' · '+label+' · Mặt sau'},...modelGalleryExtras];renderProductGallery(images);"))throw Error('ImPrint gallery carousel contract changed; abort unsafe fallback patch.');
+    html=html.replace("const label=chosen.model==='m'?'Nam':'Nữ',images=[{src:modelVariantImage(p,'Mặt trước'),kind:'mockup',alt:p.name+' · '+label+' · Mặt trước'},{src:modelVariantImage(p,'Mặt sau'),kind:'mockup',alt:p.name+' · '+label+' · Mặt sau'},...modelGalleryExtras];renderProductGallery(images);","const label=chosen.model==='m'?'Nam':'Nữ',front=modelVariantImage(p,'Mặt trước'),back=modelVariantImage(p,'Mặt sau'),images=[{src:front,kind:'mockup',alt:front===p.img?p.name+' · Ảnh minh họa sản phẩm':p.name+' · '+label+' · Mặt trước'},...(back!==p.img&&back!==front?[{src:back,kind:'mockup',alt:p.name+' · '+label+' · Mặt sau'}]:[]),...modelGalleryExtras];renderProductGallery(images);");
+  }
+
   html=html.replace(blockingInit,fastInit);
   // Do not even assign network URLs to below-the-fold collection media until
   // it approaches the viewport. The existing collection layout is untouched.
