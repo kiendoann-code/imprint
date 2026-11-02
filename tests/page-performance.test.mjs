@@ -135,3 +135,39 @@ test('direct Hoodie product URL preloads garment-specific model image',async()=>
   });
   assert.deepEqual(sources.sort(),['/mock/f_M.webp','/mock/hoodie_f.webp'].sort());
 });
+
+test('broken mockup does not erase a whole product gallery',()=>{
+  const malformedImage="const im=variantPhoto();if(!im)throw Error('Chưa tải được ảnh mẫu. Hãy tải lại trang.');const c=document.createElement('canvas');c.width=c.height=600;c.getContext('2d').drawImage(im,0,0,600,600);return c.toDataURL('image/webp',.9)";
+  const galleryBody="const label=chosen.model==='m'?'Nam':'Nữ',images=[{src:modelVariantImage(p,'Mặt trước'),kind:'mockup',alt:p.name+' · '+label+' · Mặt trước'},{src:modelVariantImage(p,'Mặt sau'),kind:'mockup',alt:p.name+' · '+label+' · Mặt sau'},...modelGalleryExtras];renderProductGallery(images);";
+  const code='function modelVariantImage(p,side){const previous=draft;try{draft={productId:p.id};'+malformedImage+'}finally{draft=previous}}'+
+    "function renderChosenModel(focusMock=false){const p=data.products.find(x=>x.id===chosen.id);"+galleryBody+"}";
+  const optimized=optimizePage(fixture().replace(marker,code+marker)).html;
+  assert.doesNotMatch(optimized,/if\(!im\)throw Error\('Chưa tải được ảnh mẫu/);
+  assert.match(optimized,/ImPrint gallery mock image unavailable/);
+  assert.match(optimized,/Ảnh minh họa sản phẩm/);
+  assert.match(optimized,/back!==p\.img&&back!==front/);
+  const start=optimized.indexOf('function modelVariantImage(');
+  const end=optimized.indexOf('function renderChosenModel(',start);
+  const api=vm.runInNewContext(
+    "let draft=null;const chosen={model:'f',size:'S'};const variantPhoto=()=>null;"+optimized.slice(start,end)+";modelVariantImage",
+    {console}
+  );
+  assert.equal(api({id:'core',img:'/static/core-original.webp'},'Mặt trước'),'/static/core-original.webp');
+});
+
+test('variant rendering error is isolated to selected image, not gallery',()=>{
+  const malformedImage="const im=variantPhoto();if(!im)throw Error('Chưa tải được ảnh mẫu. Hãy tải lại trang.');const c=document.createElement('canvas');c.width=c.height=600;c.getContext('2d').drawImage(im,0,0,600,600);return c.toDataURL('image/webp',.9)";
+  const galleryBody="const label=chosen.model==='m'?'Nam':'Nữ',images=[{src:modelVariantImage(p,'Mặt trước'),kind:'mockup',alt:p.name+' · '+label+' · Mặt trước'},{src:modelVariantImage(p,'Mặt sau'),kind:'mockup',alt:p.name+' · '+label+' · Mặt sau'},...modelGalleryExtras];renderProductGallery(images);";
+  const code='function modelVariantImage(p,side){const previous=draft;try{draft={productId:p.id};'+malformedImage+'}finally{draft=previous}}'+
+    "function renderChosenModel(focusMock=false){const p=data.products.find(x=>x.id===chosen.id);"+galleryBody+"}";
+  const optimized=optimizePage(fixture().replace(marker,code+marker)).html;
+  const start=optimized.indexOf('function modelVariantImage(');
+  const end=optimized.indexOf('function renderChosenModel(',start);
+  const silence={warn:()=>{}};
+  const api=vm.runInNewContext(
+    "let draft=null;const chosen={model:'f',size:'S'};const variantPhoto=()=>{throw Error('Missing color mask')};"+
+    optimized.slice(start,end)+";modelVariantImage",
+    {console:silence}
+  );
+  assert.equal(api({id:'hoodie',img:'/static/hoodie-original.webp'},'Mặt trước'),'/static/hoodie-original.webp');
+});
