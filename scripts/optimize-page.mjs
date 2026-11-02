@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 
 const blockingInit=`const v4BaseInit=init;init=async function(){await Promise.all([loadMocks(),...FONT_NAMES.map(f=>document.fonts.load('32px "'+f+'"')),document.fonts.load('italic 32px "Lora"'),document.fonts.load('bold 32px "Lora"')]);`;
-const fastInit='const v4BaseInit=init;init=async function(){';
+const fastInit=`const v4BaseInit=init;init=async function(){\n  // A direct product URL renders a canvas backed by mockImages. Make sure\n  // its first model/size is ready before the original product init runs.\n  // The homepage and Studio keep their non-blocking startup.\n  if(typeof location!=='undefined'&&location.pathname.startsWith('/san-pham/'))await loadMocks();`;
 const eagerMocks=`let mockImages={},mockPromise=null;
 function loadMocks(){if(mockPromise)return mockPromise;mockPromise=Promise.all(Object.entries(MOCKUPS).map(([k,v])=>new Promise(resolve=>{let im=new Image();im.onload=()=>{mockImages[k]=im;resolve()};im.onerror=resolve;im.src=v.src})));return mockPromise}`;
 const selectiveMocks=`let mockImages={},mockRequests=new Map();
@@ -13,6 +13,20 @@ function loadMocks(){
   const keys=new Set(['f_M']);
   if(typeof draft!=='undefined'&&draft?.productId&&typeof modelKey==='function'){
     try{keys.add(modelKey())}catch(error){console.warn('[ImPrint mock key]',error)}
+  }
+  // Direct /san-pham/:id requests may run before `chosen` is populated by
+  // routing/bootstrap. Use the route and catalog to load the first preview.
+  // This is intentionally scoped to product pages, not the entire catalog.
+  const productRoute=typeof location!=='undefined'
+    ?location.pathname.match(/^\/san-pham\/([^/]+)\/?$/):null;
+  if(productRoute){
+    const id=decodeURIComponent(productRoute[1]);
+    const p=typeof data!=='undefined' ? data.products?.find(item=>item.id===id):null;
+    const type=p?typeOf(p):(['tee','heavy','core'].includes(id)?'tee':id);
+    const selected=typeof chosen!=='undefined'&&chosen?.id===id?chosen:null;
+    const model=p?allowedModel(p,selected?.model||'f'):(selected?.model||'f');
+    const size=selected?.size||p?.sizes?.[0]||'S';
+    keys.add(type==='tee'?model+'_'+size:type+'_'+model);
   }
   // Product detail previews also use garment-specific keys, except basic tees.
   if(typeof chosen!=='undefined'&&chosen?.id&&typeof data!=='undefined'){
