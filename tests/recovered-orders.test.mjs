@@ -76,9 +76,11 @@ test('admin hides the obsolete recovery panel while retaining merged statistics 
   const client=fs.readFileSync('src/client-api.js','utf8');
   const analytics=fs.readFileSync('src/admin-sales.mjs','utf8');
   const backend=fs.readFileSync('src/backend.mjs','utf8');
-  assert.equal(client.includes('renderRecoveredOrdersPanel()'),false);
-  assert.equal(client.includes('imprint-recovered-orders'),false);
-  assert.equal(client.includes('Khôi phục và gộp vào thống kê đơn hàng ImPrint'),false);
+  // Preserve emergency archive import tooling, but never mount it on a normal admin URL.
+  assert.match(client,/function renderRecoveredOrdersPanel\(\)/);
+  assert.match(client,/get\('recovery-tools'\)==='1'\)renderRecoveredOrdersPanel\(\)/);
+  assert.equal(client.includes('renderImprintOrderQualityPanel();renderRecoveredOrdersPanel();'),false);
+  assert.match(client,/imprint-recovered-orders/);
   assert.match(analytics,/mergeRecoveredAnalytics/);
   assert.match(analytics,/getMergedOrderPage/);
   assert.match(backend,/getMergedBootstrapOrders/);
