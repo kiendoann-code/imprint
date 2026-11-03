@@ -1,4 +1,5 @@
 // Anonymous first-party session analytics. Never save URL query strings, IP, email, phone, or messages.
+import {salesAnalytics} from './admin-sales.mjs';
 const DAY=86400000;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const initialized=new WeakSet();
@@ -112,10 +113,16 @@ async function report(db,days){
   ).bind(from,to).all()).results||[];
   const cart=await db.prepare('SELECT COUNT(*) AS total FROM behavior_cart_events WHERE created_at>=? AND created_at<=?').bind(from,to).first();
   const cartDaily=(await db.prepare("SELECT strftime('%Y-%m-%d',created_at/1000,'unixepoch','+7 hours') AS day, COUNT(*) AS adds FROM behavior_cart_events WHERE created_at>=? AND created_at<=? GROUP BY day ORDER BY day").bind(from,to).all()).results||[];
-  const historical=await db.prepare('SELECT COUNT(*) AS orders, COUNT(DISTINCT user_id) AS buyers FROM orders WHERE created_at>=? AND created_at<=?').bind(from,to).first();
-  const historicalDaily=(await db.prepare("SELECT strftime('%Y-%m-%d',created_at/1000,'unixepoch','+7 hours') AS day, COUNT(*) AS orders FROM orders WHERE created_at>=? AND created_at<=? GROUP BY day ORDER BY day").bind(from,to).all()).results||[];
-  const beginDay=new Date(from+7*3600000).toISOString().slice(0,10);
+  // Sales cards must use the EXACT same authoritative order cohort and archive
+  // de-duplication as /api/admin/analytics, not the live orders table alone.
+  // Unlike first-party session telemetry (rolling N*24h), sales reporting
+  // covers N complete local calendar dates including today in Asia/Ho_Chi_Minh.
   const endDay=new Date(to+7*3600000).toISOString().slice(0,10);
+  const salesFromDay=new Date(Date.parse(endDay+'T00:00:00Z')-(days-1)*DAY).toISOString().slice(0,10);
+  const sales=await salesAnalytics(db,new URLSearchParams({from:salesFromDay,to:endDay}));
+  const historical={orders:sales.kpis.orders,buyers:sales.kpis.buyers};
+  const historicalDaily=sales.daily.map(({day,orders})=>({day,orders}));
+  const beginDay=new Date(from+7*3600000).toISOString().slice(0,10);
   const imported=(await db.prepare('SELECT day,visitors,page_views AS pageViews,source FROM behavior_external_daily WHERE day>=? AND day<=? ORDER BY day').bind(beginDay,endDay).all()).results||[];
   // Merge at day level: an imported Cloudflare count replaces the first-party
   // count for the same day and metric. Never add two trackers for an overlap.
@@ -205,7 +212,11 @@ async function report(db,days){
       conversions:result?.conversions||0,
       addToCart:cart?.total||0
     },
-    historicalOrders:{orders:historical?.orders||0,buyers:historical?.buyers||0,daily:historicalDaily},
+    historicalOrders:{
+      orders:historical.orders||0,buyers:historical.buyers||0,daily:historicalDaily,
+      range:sales.range,recoveredOrders:sales.recovery?.orders||0,
+      definition:sales.definitions.buyers
+    },
     importedAnalytics:{source:'cloudflare',daily:imported,importedDays:imported.length,
       pageViews:imported.reduce((a,r)=>a+(r.pageViews||0),0),
       dailyVisitors:imported.reduce((a,r)=>a+(r.visitors||0),0)},
@@ -228,7 +239,7 @@ async function report(db,days){
       visitors:'Số mã khách truy cập ẩn danh riêng biệt trong giai đoạn, không phải số người được xác minh.',
       period:'Khoảng thời gian trượt 7, 30 hoặc 90 ngày tính đến hiện tại.',
       addToCart:'Số sự kiện tăng giỏ hàng được lưu thành công, một thao tác được tính một lượt; không có dữ liệu lịch sử trước ngày bật.',
-      history:'Đơn hàng và khách mua là số liệu từ D1. Lượt xem trang và khách theo ngày được ghép theo ngày: chỉ số Cloudflare đã nhập ưu tiên trên cùng ngày, không cộng trùng chỉ số từ đo trực tiếp. Số phiên và khách duy nhất toàn kỳ vẫn chỉ tính từ đo trực tiếp.',
+      history:'Đơn và hồ sơ khách dùng chung dữ liệu cùng kỳ và cùng cơ chế chống trùng với Thống kê kinh doanh, gồm đơn đang hoạt động và đơn lịch sử đã khôi phục. Lượt xem trang và khách theo ngày dùng dữ liệu Cloudflare khi trùng ngày; phiên và khách truy cập riêng biệt dựa trên hệ đo tương ứng.',
       externalVisitors:'Tổng lượt khách duy nhất theo từng ngày (có thể trùng giữa các ngày); không phải số khách duy nhất trong toàn khoảng.'
     }
   };

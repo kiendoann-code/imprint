@@ -155,8 +155,8 @@
     ['avgScrollDepth','Độ sâu cuộn trang','Đo từ ngày bật'],
     ['addToCart','Lượt thêm vào giỏ','Đo từ ngày bật'],
     ['conversionRate','Chuyển đổi / phiên','Đo từ ngày bật'],
-    ['orders','Đơn đã đặt','Lịch sử D1'],
-    ['buyers','Tài khoản đã đặt','Lịch sử D1']
+    ['orders','Đơn đã đặt','Đồng bộ Thống kê kinh doanh'],
+    ['buyers','Hồ sơ khách đặt hàng','Có cả hồ sơ nguồn khôi phục; không phải tài khoản đã xác minh']
   ];
   function mount(){
     if(typeof app==='undefined'||typeof user==='undefined'||user?.role!=='admin')return;
@@ -166,7 +166,7 @@
     section.setAttribute('aria-label','Phân tích hành vi người dùng ImPrint');
     section.innerHTML='<div class="ip-behavior-top"><div><div class="ip-behavior-kicker">IMPRINT / QUẢN TRỊ / BÁO CÁO</div>'+
       '<h2>Hành vi khách truy cập</h2>'+
-      '<p class="ip-behavior-sub">Lưu lượng lịch sử và hoạt động trực tiếp được ghép theo ngày. Nhật ký phiên khôi phục cho phép tính khách riêng biệt toàn kỳ. Nếu cùng một ngày có hai nguồn, chỉ sử dụng một nguồn cho số phiên và các chỉ số phiên. Đơn hàng lấy từ D1.</p></div>'+
+      '<p class="ip-behavior-sub">Lưu lượng lịch sử và hoạt động trực tiếp được ghép theo ngày. Nhật ký phiên khôi phục cho phép tính khách riêng biệt toàn kỳ. Nếu cùng một ngày có hai nguồn, chỉ sử dụng một nguồn cho số phiên và các chỉ số phiên. Đơn hàng và hồ sơ khách sử dụng cùng số liệu với Thống kê kinh doanh.</p></div>'+
       '<div class="ip-behavior-filters" role="group" aria-label="Chọn khoảng thời gian">'+
       [7,30,90].map(d=>'<button type="button" class="ip-behavior-filter" data-days="'+d+'" aria-pressed="'+(selectedDays===d)+'">'+d+' ngày</button>').join('')+
       '<button type="button" class="ip-behavior-refresh" aria-label="Làm mới báo cáo" title="Làm mới">↻</button></div></div>'+
@@ -177,7 +177,7 @@
        '<div class="ip-behavior-chart-card"><h3>Lượt xem trang theo ngày · đã gộp</h3><p class="ip-behavior-hint">Màu xanh: CSV lịch sử; màu nâu: đo trực tiếp. Trùng ngày chọn CSV, không cộng đôi.</p><div class="ip-behavior-chart" data-chart="mergedPageViews" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Khách truy cập theo ngày · đã gộp</h3><p class="ip-behavior-hint">Lượt khách riêng biệt từng ngày có thể trùng nhau giữa các ngày; không phải khách riêng biệt toàn kỳ.</p><div class="ip-behavior-chart" data-chart="mergedDailyVisitors" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Phiên truy cập theo ngày</h3><p class="ip-behavior-hint">Dữ liệu đo lường trực tiếp, không ước tính lịch sử</p><div class="ip-behavior-chart" data-chart="sessions" role="img"></div></div>'+
-       '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Lịch sử đơn hàng xác thực trong D1</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
+       '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Đơn hoạt động + lịch sử khôi phục; cùng cách tính với Thống kê kinh doanh</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
       '<div class="ip-behavior-external"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
        '<p>Nhập CSV Cloudflare theo ngày hoặc CSV nhật ký phiên (849 dòng / 511 mã khách). Hệ thống tự nhận diện loại file và đưa vào biểu đồ, không cộng trùng cùng ngày.</p></div>'+
        '<button type="button" class="ip-behavior-import">Nhập CSV lịch sử</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
@@ -339,9 +339,10 @@
       section.querySelector('[data-historical="visitors"]').textContent=external.importedDays?fmt(external.dailyVisitors):'Chưa có dữ liệu';
       section.querySelector('[data-recovered="sessions"]').textContent=recovered?.available?fmt(recovered.sessions):'Chưa nhập';
       section.querySelector('[data-recovered="visitors"]').textContent=recovered?.available?fmt(recovered.visitors):'Chưa nhập';
-      status.textContent=recovered?.available
+      const salesPeriod='Đơn hàng '+history.range.from+'–'+history.range.to+' theo ngày đặt · '+history.recoveredOrders+' đơn lịch sử được gộp; đồng bộ với Thống kê kinh doanh khi chọn cùng ngày. ';
+      status.textContent=salesPeriod+(recovered?.available
         ?'Báo cáo '+days+' ngày · Đã khôi phục '+recovered.sessions+' phiên, '+recovered.visitors+' khách riêng biệt từ nhật ký. '+(k.sourceMixed?'Có dữ liệu trực tiếp nằm ngoài các ngày lịch sử; khách trùng giữa hai hệ đo chưa thể đối chiếu.':'Khách riêng biệt toàn kỳ lịch sử không cộng dồn khách theo ngày.')+' Đơn hàng lấy từ D1.'
-        :'Báo cáo '+days+' ngày · Chưa nhập nhật ký phiên nên số khách riêng biệt chỉ phản ánh bộ đếm trực tiếp. CSV Cloudflare chỉ bổ sung khách theo ngày và lượt xem trang.';
+        :'Báo cáo '+days+' ngày · Chưa nhập nhật ký phiên nên số khách riêng biệt chỉ phản ánh bộ đếm trực tiếp. CSV Cloudflare chỉ bổ sung khách theo ngày và lượt xem trang.');
     }catch(e){if(requestId===id&&section.isConnected)status.textContent=e.message}
   }
   if(typeof admin==='function'){
