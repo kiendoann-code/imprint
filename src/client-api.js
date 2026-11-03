@@ -3355,7 +3355,12 @@ function renderRecoveredOrdersPanel(){
     '<div style="overflow:auto"><table><thead><tr><th>Mã đơn</th><th>Đặt lúc</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th><th>Đã giao</th></tr></thead><tbody data-archive-rows></tbody></table></div>'+
     '<div data-archive-pages style="display:flex;align-items:center;gap:1rem;margin-top:1rem"></div>'+
     '<details><summary>Khách hàng mua gần đây trong dữ liệu lịch sử</summary><div style="overflow:auto"><table><thead><tr><th>Khách hàng</th><th>Email nguồn</th><th>Đơn</th><th>Giá trị</th><th>Gần nhất</th></tr></thead><tbody data-archive-customers></tbody></table></div></details></div>';
-  app.appendChild(section);
+  // Keep the restore panel visible immediately on entering Admin rather than below all catalog/settings sections.
+  app.prepend(section);
+  if(user?.id!=='site-owner'){
+    section.querySelector('[data-archive-import]').hidden=true;
+    section.querySelector('[data-archive-summary]').textContent='Chỉ tài khoản quản trị chính có quyền nhập đơn lịch sử. Tài khoản hiện tại chỉ được xem.';
+  }
   const money=v=>new Intl.NumberFormat('vi-VN').format(Number(v)||0)+'đ';
   const time=v=>new Date(v).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
   function addRow(tbody,fields){const tr=document.createElement('tr');for(const field of fields){const td=document.createElement('td');td.textContent=String(field??'—');tr.appendChild(td)}tbody.appendChild(tr)}
@@ -3366,7 +3371,7 @@ function renderRecoveredOrdersPanel(){
     section.querySelector('[data-archive-summary]').textContent=report.total?
       report.summary.orders+' đơn đã giao · '+report.summary.customers+' khách theo email nguồn · '+money(report.summary.revenueVnd)+' (dữ liệu lịch sử)':
       'Chưa nhập dữ liệu lịch sử. Hãy chọn tệp JSON khôi phục.';
-    section.querySelector('[data-archive-import]').hidden=report.total>0;
+    section.querySelector('[data-archive-import]').hidden=report.total>0 || user?.id!=='site-owner';
     const list=section.querySelector('[data-archive-rows]');list.replaceChildren();
     for(const o of report.orders)addRow(list,[o.id,time(o.placedAt),o.customerName,o.productSummary,o.quantity,money(o.valueVnd)]);
     const customers=section.querySelector('[data-archive-customers]');customers.replaceChildren();
