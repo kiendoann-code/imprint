@@ -3371,7 +3371,7 @@ function renderRecoveredOrdersPanel(){
     section.querySelector('[data-archive-summary]').textContent=report.total?
       report.summary.orders+' đơn đã giao · '+report.summary.customers+' khách theo email nguồn · '+money(report.summary.revenueVnd)+' (dữ liệu lịch sử)':
       'Chưa nhập dữ liệu lịch sử. Hãy chọn tệp JSON khôi phục.';
-    section.querySelector('[data-archive-import]').hidden=report.total>0;
+    section.querySelector('[data-archive-import]').hidden=report.total>0 || user?.id!=='site-owner';
     const list=section.querySelector('[data-archive-rows]');list.replaceChildren();
     for(const o of report.orders)addRow(list,[o.id,time(o.placedAt),o.customerName,o.productSummary,o.quantity,money(o.valueVnd)]);
     const customers=section.querySelector('[data-archive-customers]');customers.replaceChildren();
