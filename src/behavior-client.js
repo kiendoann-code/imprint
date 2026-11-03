@@ -178,7 +178,7 @@
        '<div class="ip-behavior-chart-card"><h3>Khách truy cập theo ngày · đã gộp</h3><p class="ip-behavior-hint">Lượt khách riêng biệt từng ngày có thể trùng nhau giữa các ngày; không phải khách riêng biệt toàn kỳ.</p><div class="ip-behavior-chart" data-chart="mergedDailyVisitors" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Phiên truy cập theo ngày</h3><p class="ip-behavior-hint">Dữ liệu đo lường trực tiếp, không ước tính lịch sử</p><div class="ip-behavior-chart" data-chart="sessions" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Đơn hoạt động + lịch sử khôi phục; cùng cách tính với Thống kê kinh doanh</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
-      '<div class="ip-behavior-external"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
+      '<div class="ip-behavior-external" hidden style="display:none"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
        '<p>Nhập CSV Cloudflare theo ngày hoặc CSV nhật ký phiên (849 dòng / 511 mã khách). Hệ thống tự nhận diện loại file và đưa vào biểu đồ, không cộng trùng cùng ngày.</p></div>'+
        '<button type="button" class="ip-behavior-import">Nhập CSV lịch sử</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
       '<div class="ip-behavior-mini"><span>Ngày đã nhập: <b data-historical="days">—</b></span>'+
@@ -189,7 +189,7 @@
         '<p>Nhập CSV chứa mã khách và mã phiên để khôi phục chính xác số khách riêng biệt trong giai đoạn lịch sử. Không ghi đè phiên đang đo trực tiếp.</p></div>'+
         '<button type="button" class="ip-behavior-import ip-behavior-session-import">Nhập CSV phiên</button>'+
         '<input type="file" hidden accept=".csv,text/csv" class="ip-behavior-session-file"></div>'+
-        '<div class="ip-behavior-mini"><span>Phiên khôi phục: <b data-recovered="sessions">—</b></span>'+
+        '<div class="ip-behavior-mini" hidden style="display:none"><span>Phiên khôi phục: <b data-recovered="sessions">—</b></span>'+
         '<span>Khách riêng biệt khôi phục: <b data-recovered="visitors">—</b></span></div>'+
         '<p class="ip-behavior-hint">Chỉ hỗ trợ nhật ký có nguồn rõ ràng. Mã khách giữa hệ thống lịch sử và hệ thống đo mới có thể không liên kết được; số khách riêng biệt khi trộn hai giai đoạn có thể trùng. Đơn hàng và thanh toán vẫn tách biệt.</p></div>';
     app.appendChild(section);
@@ -220,8 +220,8 @@
         if(!response.ok)throw Error(json.error||'Không nhập được dữ liệu (HTTP '+response.status+').');
         await load(section);
         section.querySelector('.ip-behavior-status').textContent=isSessions
-          ?'Đã khôi phục '+fmt(json.imported)+' phiên, '+fmt(json.visitors)+' khách riêng biệt từ nhật ký CSV.'
-          :'Đã cập nhật '+json.imported+' ngày từ CSV Cloudflare.';
+          ?'Đã nhập nhật ký phiên thành công và cập nhật các chỉ số Analytics.'
+          :'Đã cập nhật dữ liệu Analytics từ CSV.';
       }catch(e){section.querySelector('.ip-behavior-status').textContent=e.message}
       finally{pick.disabled=false;input.value=''}
     });
@@ -241,7 +241,7 @@
         const json=await response.json();
         if(!response.ok)throw Error(json.error||'Không nhập được nhật ký phiên.');
         await load(section);
-        section.querySelector('.ip-behavior-status').textContent='Đã khôi phục '+fmt(json.imported)+' phiên, '+fmt(json.visitors)+' khách riêng biệt từ nhật ký.';
+        section.querySelector('.ip-behavior-status').textContent='Đã nhập nhật ký phiên thành công và cập nhật các chỉ số Analytics.';
       }catch(e){section.querySelector('.ip-behavior-status').textContent=e.message}
       finally{sessionButton.disabled=false;sessionFile.value=''}
     });
@@ -341,8 +341,8 @@
       section.querySelector('[data-recovered="visitors"]').textContent=recovered?.available?fmt(recovered.visitors):'Chưa nhập';
       const salesPeriod='Đơn hàng '+history.range.from+'–'+history.range.to+' theo ngày đặt · '+history.recoveredOrders+' đơn lịch sử được gộp; đồng bộ với Thống kê kinh doanh khi chọn cùng ngày. ';
       status.textContent=salesPeriod+(recovered?.available
-        ?'Báo cáo '+days+' ngày · Đã khôi phục '+recovered.sessions+' phiên, '+recovered.visitors+' khách riêng biệt từ nhật ký. '+(k.sourceMixed?'Có dữ liệu trực tiếp nằm ngoài các ngày lịch sử; khách trùng giữa hai hệ đo chưa thể đối chiếu.':'Khách riêng biệt toàn kỳ lịch sử không cộng dồn khách theo ngày.')+' Đơn hàng lấy từ D1.'
-        :'Báo cáo '+days+' ngày · Chưa nhập nhật ký phiên nên số khách riêng biệt chỉ phản ánh bộ đếm trực tiếp. CSV Cloudflare chỉ bổ sung khách theo ngày và lượt xem trang.');
+        ?'Báo cáo '+days+' ngày · Các chỉ số lưu lượng đã được tổng hợp từ dữ liệu hiện có. '+(k.sourceMixed?'Dữ liệu từ hai hệ đo có thể chứa khách trùng chưa đối chiếu.':'')+' Đơn hàng lấy từ D1.'
+        :'Báo cáo '+days+' ngày · Chỉ số khách riêng biệt tính từ dữ liệu đo hiện có.');
     }catch(e){if(requestId===id&&section.isConnected)status.textContent=e.message}
   }
   if(typeof admin==='function'){
