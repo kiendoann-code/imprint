@@ -178,7 +178,7 @@
        '<div class="ip-behavior-chart-card"><h3>Khách truy cập theo ngày · đã gộp</h3><p class="ip-behavior-hint">Lượt khách riêng biệt từng ngày có thể trùng nhau giữa các ngày; không phải khách riêng biệt toàn kỳ.</p><div class="ip-behavior-chart" data-chart="mergedDailyVisitors" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Phiên truy cập theo ngày</h3><p class="ip-behavior-hint">Dữ liệu đo lường trực tiếp, không ước tính lịch sử</p><div class="ip-behavior-chart" data-chart="sessions" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Đơn hoạt động + lịch sử khôi phục; cùng cách tính với Thống kê kinh doanh</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
-      '<div class="ip-behavior-external" hidden><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
+      '<div class="ip-behavior-external" hidden style="display:none"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
        '<p>Nhập CSV Cloudflare theo ngày hoặc CSV nhật ký phiên (849 dòng / 511 mã khách). Hệ thống tự nhận diện loại file và đưa vào biểu đồ, không cộng trùng cùng ngày.</p></div>'+
        '<button type="button" class="ip-behavior-import">Nhập CSV lịch sử</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
       '<div class="ip-behavior-mini"><span>Ngày đã nhập: <b data-historical="days">—</b></span>'+
@@ -189,7 +189,7 @@
         '<p>Nhập CSV chứa mã khách và mã phiên để khôi phục chính xác số khách riêng biệt trong giai đoạn lịch sử. Không ghi đè phiên đang đo trực tiếp.</p></div>'+
         '<button type="button" class="ip-behavior-import ip-behavior-session-import">Nhập CSV phiên</button>'+
         '<input type="file" hidden accept=".csv,text/csv" class="ip-behavior-session-file"></div>'+
-        '<div class="ip-behavior-mini" hidden><span>Phiên khôi phục: <b data-recovered="sessions">—</b></span>'+
+        '<div class="ip-behavior-mini" hidden style="display:none"><span>Phiên khôi phục: <b data-recovered="sessions">—</b></span>'+
         '<span>Khách riêng biệt khôi phục: <b data-recovered="visitors">—</b></span></div>'+
         '<p class="ip-behavior-hint">Chỉ hỗ trợ nhật ký có nguồn rõ ràng. Mã khách giữa hệ thống lịch sử và hệ thống đo mới có thể không liên kết được; số khách riêng biệt khi trộn hai giai đoạn có thể trùng. Đơn hàng và thanh toán vẫn tách biệt.</p></div>';
     app.appendChild(section);
