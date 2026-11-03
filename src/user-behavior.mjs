@@ -74,7 +74,7 @@ async function report(db,days){
   ).bind(from,to).first();
   const daily=(await db.prepare(
     "SELECT strftime('%Y-%m-%d',started_at/1000,'unixepoch','+7 hours') AS day, "+
-    'COUNT(*) AS sessions, COUNT(DISTINCT visitor_id) AS visitors, SUM(converted) AS conversions '+
+    'COUNT(*) AS sessions, COUNT(DISTINCT visitor_id) AS visitors, COALESCE(SUM(page_views),0) AS pageViews, SUM(converted) AS conversions '+
     'FROM behavior_sessions WHERE started_at>=? AND started_at<=? GROUP BY day ORDER BY day'
   ).bind(from,to).all()).results||[];
   const cart=await db.prepare('SELECT COUNT(*) AS total FROM behavior_cart_events WHERE created_at>=? AND created_at<=?').bind(from,to).first();
@@ -84,6 +84,23 @@ async function report(db,days){
   const beginDay=new Date(from+7*3600000).toISOString().slice(0,10);
   const endDay=new Date(to+7*3600000).toISOString().slice(0,10);
   const imported=(await db.prepare('SELECT day,visitors,page_views AS pageViews,source FROM behavior_external_daily WHERE day>=? AND day<=? ORDER BY day').bind(beginDay,endDay).all()).results||[];
+  // Merge at day level: an imported Cloudflare count replaces the first-party
+  // count for the same day and metric. Never add two trackers for an overlap.
+  // Daily distinct visitors can repeat across dates; they are not period uniques.
+  const mergedMap=new Map(daily.map(r=>[r.day,{
+    day:r.day,sessions:r.sessions||0,visitors:r.visitors||0,pageViews:r.pageViews||0,
+    importedVisitors:false,importedPageViews:false
+  }]));
+  let overlapDays=0;
+  for(const r of imported){
+    const existing=mergedMap.get(r.day);
+    if(existing)overlapDays++;
+    const combined=existing||{day:r.day,sessions:0,visitors:0,pageViews:0,importedVisitors:false,importedPageViews:false};
+    if(r.visitors!==null&&r.visitors!==undefined){combined.visitors=r.visitors;combined.importedVisitors=true}
+    if(r.pageViews!==null&&r.pageViews!==undefined){combined.pageViews=r.pageViews;combined.importedPageViews=true}
+    mergedMap.set(r.day,combined);
+  }
+  const mergedDaily=[...mergedMap.values()].sort((a,b)=>a.day.localeCompare(b.day));
   const count=result?.sessions||0;
   return {
     days,range:{from:new Date(from).toISOString(),to:new Date(to).toISOString(),timezone:'Asia/Ho_Chi_Minh'},
@@ -101,6 +118,11 @@ async function report(db,days){
     importedAnalytics:{source:'cloudflare',daily:imported,importedDays:imported.length,
       pageViews:imported.reduce((a,r)=>a+(r.pageViews||0),0),
       dailyVisitors:imported.reduce((a,r)=>a+(r.visitors||0),0)},
+    mergedAnalytics:{
+      daily:mergedDaily,daysWithData:mergedDaily.length,importedDays:imported.length,overlapDays,
+      pageViews:mergedDaily.reduce((a,r)=>a+r.pageViews,0),
+      dailyVisitors:mergedDaily.reduce((a,r)=>a+r.visitors,0)
+    },
     daily,cartDaily,definitions:{
       bounce:'Phiên có tối đa một lượt xem trang, dưới 10 giây tương tác, không có tương tác chủ động và không phát sinh đơn.',
       duration:'Thời gian người dùng hoạt động khi tab đang hiển thị, không phải thời gian để tab mở không hoạt động.',
@@ -109,7 +131,7 @@ async function report(db,days){
       visitors:'Số mã khách truy cập ẩn danh riêng biệt trong giai đoạn, không phải số người được xác minh.',
       period:'Khoảng thời gian trượt 7, 30 hoặc 90 ngày tính đến hiện tại.',
       addToCart:'Số sự kiện tăng giỏ hàng được lưu thành công, một thao tác được tính một lượt; không có dữ liệu lịch sử trước ngày bật.',
-      history:'Đơn hàng và khách mua là số liệu thực từ D1, kể cả trước ngày bật đo lường hành vi. Dữ liệu nhập Cloudflare là theo ngày và không được cộng vào số phiên/khách riêng biệt.',
+      history:'Đơn hàng và khách mua là số liệu từ D1. Lượt xem trang và khách theo ngày được ghép theo ngày: chỉ số Cloudflare đã nhập ưu tiên trên cùng ngày, không cộng trùng chỉ số từ đo trực tiếp. Số phiên và khách duy nhất toàn kỳ vẫn chỉ tính từ đo trực tiếp.',
       externalVisitors:'Tổng lượt khách duy nhất theo từng ngày (có thể trùng giữa các ngày); không phải số khách duy nhất trong toàn khoảng.'
     }
   };
