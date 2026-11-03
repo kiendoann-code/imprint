@@ -62,6 +62,7 @@ fs.writeFileSync(output+'/public/static/imprint-performance-20261021-v4.json',JS
 fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=86400\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
 fs.copyFileSync('src/backend.mjs',output+'/worker/backend.mjs');
+fs.copyFileSync('src/recovered-orders.mjs',output+'/worker/recovered-orders.mjs');
 fs.writeFileSync(output+'/worker/entry.mjs',`import backend from './backend.mjs';
 export default {async fetch(req,env,ctx){
  const pathname=new URL(req.url).pathname;
