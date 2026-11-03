@@ -147,8 +147,8 @@
   const metrics=[
     ['mergedPageViews','Lượt xem trang','Đã gộp CSV + đo trực tiếp theo ngày'],
     ['mergedDailyVisitors','Tổng khách theo từng ngày','Có thể trùng khách giữa các ngày'],
-    ['sessions','Phiên truy cập','Đo trực tiếp · chưa gồm phiên CSV'],
-    ['visitors','Khách riêng biệt (đo trực tiếp)','Không gồm khách nhập theo ngày'],
+    ['sessions','Phiên truy cập','Nhật ký khôi phục + đo trực tiếp không trùng ngày'],
+    ['visitors','Khách riêng biệt','Dựa trên mã khách của nhật ký + đo trực tiếp'],
     ['pageViewsPerSession','Trang / phiên','Đo từ ngày bật'],
     ['avgSessionSeconds','Thời gian hoạt động','Đo từ ngày bật'],
     ['bounceRate','Tỷ lệ thoát','Đo từ ngày bật'],
@@ -166,7 +166,7 @@
     section.setAttribute('aria-label','Phân tích hành vi người dùng ImPrint');
     section.innerHTML='<div class="ip-behavior-top"><div><div class="ip-behavior-kicker">IMPRINT / QUẢN TRỊ / BÁO CÁO</div>'+
       '<h2>Hành vi khách truy cập</h2>'+
-      '<p class="ip-behavior-sub">Lượt xem trang và khách theo ngày được gộp từ CSV lịch sử với dữ liệu trực tiếp, ưu tiên CSV khi trùng ngày. Phiên, khách riêng biệt toàn kỳ và chỉ số tương tác chỉ tính khi có dữ liệu đo trực tiếp; đơn hàng lấy từ D1.</p></div>'+
+      '<p class="ip-behavior-sub">Lưu lượng lịch sử và hoạt động trực tiếp được ghép theo ngày. Nhật ký phiên khôi phục cho phép tính khách riêng biệt toàn kỳ. Nếu cùng một ngày có hai nguồn, chỉ sử dụng một nguồn cho số phiên và các chỉ số phiên. Đơn hàng lấy từ D1.</p></div>'+
       '<div class="ip-behavior-filters" role="group" aria-label="Chọn khoảng thời gian">'+
       [7,30,90].map(d=>'<button type="button" class="ip-behavior-filter" data-days="'+d+'" aria-pressed="'+(selectedDays===d)+'">'+d+' ngày</button>').join('')+
       '<button type="button" class="ip-behavior-refresh" aria-label="Làm mới báo cáo" title="Làm mới">↻</button></div></div>'+
@@ -184,7 +184,14 @@
       '<div class="ip-behavior-mini"><span>Ngày đã nhập: <b data-historical="days">—</b></span>'+
         '<span>Tổng lượt xem trang/ngày: <b data-historical="views">—</b></span>'+
         '<span>Tổng khách duy nhất theo ngày: <b data-historical="visitors">—</b></span></div>'+
-      '<p class="ip-behavior-hint">CSV gồm cột date, visitors, pageViews (mỗi dòng một ngày). Khách duy nhất từng ngày có thể trùng qua nhiều ngày, không phải khách duy nhất 30 ngày. Chỉ nhập dữ liệu từ nguồn xác thực.</p></div>';
+      '<p class="ip-behavior-hint">CSV gồm cột date, visitors, pageViews (mỗi dòng một ngày). Chỉ số khách duy nhất theo ngày không phải số khách riêng biệt của cả kỳ.</p></div>'+
+      '<div class="ip-behavior-external"><div class="ip-behavior-external-head"><div><strong>Khôi phục nhật ký phiên truy cập</strong>'+
+        '<p>Nhập CSV chứa mã khách và mã phiên để khôi phục chính xác số khách riêng biệt trong giai đoạn lịch sử. Không ghi đè phiên đang đo trực tiếp.</p></div>'+
+        '<button type="button" class="ip-behavior-import ip-behavior-session-import">Nhập CSV phiên</button>'+
+        '<input type="file" hidden accept=".csv,text/csv" class="ip-behavior-session-file"></div>'+
+        '<div class="ip-behavior-mini"><span>Phiên khôi phục: <b data-recovered="sessions">—</b></span>'+
+        '<span>Khách riêng biệt khôi phục: <b data-recovered="visitors">—</b></span></div>'+
+        '<p class="ip-behavior-hint">Chỉ hỗ trợ nhật ký có nguồn rõ ràng. Mã khách giữa hệ thống lịch sử và hệ thống đo mới có thể không liên kết được; số khách riêng biệt khi trộn hai giai đoạn có thể trùng. Đơn hàng và thanh toán vẫn tách biệt.</p></div>';
     app.appendChild(section);
     section.querySelectorAll('[data-days]').forEach(b=>b.addEventListener('click',()=>{
       selectedDays=Number(b.dataset.days);
@@ -211,7 +218,46 @@
       }catch(e){section.querySelector('.ip-behavior-status').textContent=e.message}
       finally{pick.disabled=false;input.value=''}
     });
+    const sessionButton=section.querySelector('.ip-behavior-session-import');
+    const sessionFile=section.querySelector('.ip-behavior-session-file');
+    sessionButton.addEventListener('click',()=>sessionFile.click());
+    sessionFile.addEventListener('change',async()=>{
+      const file=sessionFile.files?.[0];if(!file)return;
+      sessionButton.disabled=true;
+      try{
+        if(file.size>120000)throw Error('CSV nhật ký quá lớn: tối đa 120 KB.');
+        const rows=parseSessionsCSV(await file.text());
+        const response=await fetch('/api/admin/behavior/import-sessions',{
+          method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({source:'imprint-workbook',rows})
+        });
+        const json=await response.json();
+        if(!response.ok)throw Error(json.error||'Không nhập được nhật ký phiên.');
+        await load(section);
+        section.querySelector('.ip-behavior-status').textContent='Đã khôi phục '+fmt(json.imported)+' phiên, '+fmt(json.visitors)+' khách riêng biệt từ nhật ký.';
+      }catch(e){section.querySelector('.ip-behavior-status').textContent=e.message}
+      finally{sessionButton.disabled=false;sessionFile.value=''}
+    });
     load(section);
+  }
+  function parseSessionsCSV(csv){
+    const lines=csv.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(Boolean);
+    if(lines.length<2||lines.length>2001)throw Error('CSV cần có 1–2.000 dòng phiên truy cập.');
+    const cols=lines[0].split(',').map(v=>v.trim().toLowerCase());
+    const required=['date','session_id','visitor_id','page_views','engagement_seconds',
+      'bounced','scroll_depth_pct','add_to_cart','converted'];
+    if(required.some(k=>!cols.includes(k)))throw Error('CSV phiên thiếu cột bắt buộc. Cần date, session_id, visitor_id và các chỉ số phiên.');
+    const at=(cells,key)=>cells[cols.indexOf(key)];
+    const number=(cells,key)=>{const n=Number(at(cells,key));if(!Number.isFinite(n))throw Error('Giá trị không phải số: '+key);return n};
+    return lines.slice(1).map(line=>{
+      const cells=line.split(',');
+      if(cells.length!==cols.length)throw Error('Một dòng CSV có số cột không hợp lệ.');
+      return {day:at(cells,'date'),sessionId:at(cells,'session_id'),
+        visitorId:at(cells,'visitor_id'),pageViews:number(cells,'page_views'),
+        engagementSeconds:number(cells,'engagement_seconds'),bounced:number(cells,'bounced'),
+        scrollDepth:number(cells,'scroll_depth_pct'),addToCart:number(cells,'add_to_cart'),
+        converted:number(cells,'converted')};
+    });
   }
   function parseHistoryCSV(csv){
     // Quoted commas are supported; exported CSV must explicitly identify unique visitors and page views.
@@ -262,7 +308,7 @@
       if(!response.ok)throw Error(response.status===403?'Vui lòng đăng nhập lại bằng tài khoản quản trị.':'Không lấy được thống kê (HTTP '+response.status+').');
       const data=await response.json();
       if(requestId!==id||!section.isConnected)return;
-      const k=data.kpis,history=data.historicalOrders,external=data.importedAnalytics,merged=data.mergedAnalytics;
+      const k=data.combinedKpis||data.kpis,history=data.historicalOrders,external=data.importedAnalytics,merged=data.mergedAnalytics,recovered=data.recoveredSessions;
       const values={
         mergedPageViews:fmt(merged.pageViews),mergedDailyVisitors:fmt(merged.dailyVisitors),
         sessions:fmt(k.sessions),visitors:fmt(k.visitors),
@@ -274,12 +320,16 @@
       for(const [key,value]of Object.entries(values))section.querySelector('[data-value="'+key+'"]').textContent=value;
       drawChart(section.querySelector('[data-chart="mergedPageViews"]'),merged.daily,'pageViews',days);
       drawChart(section.querySelector('[data-chart="mergedDailyVisitors"]'),merged.daily,'visitors',days);
-      drawChart(section.querySelector('[data-chart="sessions"]'),data.daily,'sessions',days);
+      drawChart(section.querySelector('[data-chart="sessions"]'),data.mergedSessionsDaily||data.daily,'sessions',days);
       drawChart(section.querySelector('[data-chart="orders"]'),history.daily,'orders',days,'is-order');
       section.querySelector('[data-historical="days"]').textContent=fmt(external.importedDays);
       section.querySelector('[data-historical="views"]').textContent=external.importedDays?fmt(external.pageViews):'Chưa có dữ liệu';
       section.querySelector('[data-historical="visitors"]').textContent=external.importedDays?fmt(external.dailyVisitors):'Chưa có dữ liệu';
-      status.textContent='Báo cáo '+days+' ngày · Lượt xem trang và khách theo ngày đã gộp '+merged.importedDays+' ngày CSV với dữ liệu trực tiếp; '+merged.overlapDays+' ngày trùng nguồn được ưu tiên CSV. Phiên và hành vi vẫn lấy từ đo trực tiếp, đơn hàng lấy từ D1.';
+      section.querySelector('[data-recovered="sessions"]').textContent=recovered?.available?fmt(recovered.sessions):'Chưa nhập';
+      section.querySelector('[data-recovered="visitors"]').textContent=recovered?.available?fmt(recovered.visitors):'Chưa nhập';
+      status.textContent=recovered?.available
+        ?'Báo cáo '+days+' ngày · Đã khôi phục '+recovered.sessions+' phiên, '+recovered.visitors+' khách riêng biệt từ nhật ký. '+(k.sourceMixed?'Có dữ liệu trực tiếp nằm ngoài các ngày lịch sử; khách trùng giữa hai hệ đo chưa thể đối chiếu.':'Khách riêng biệt toàn kỳ lịch sử không cộng dồn khách theo ngày.')+' Đơn hàng lấy từ D1.'
+        :'Báo cáo '+days+' ngày · Chưa nhập nhật ký phiên nên số khách riêng biệt chỉ phản ánh bộ đếm trực tiếp. CSV Cloudflare chỉ bổ sung khách theo ngày và lượt xem trang.';
     }catch(e){if(requestId===id&&section.isConnected)status.textContent=e.message}
   }
   if(typeof admin==='function'){
