@@ -179,8 +179,8 @@
        '<div class="ip-behavior-chart-card"><h3>Phiên truy cập theo ngày</h3><p class="ip-behavior-hint">Dữ liệu đo lường trực tiếp, không ước tính lịch sử</p><div class="ip-behavior-chart" data-chart="sessions" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Lịch sử đơn hàng xác thực trong D1</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
       '<div class="ip-behavior-external"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
-       '<p>Nhập thống kê Cloudflare theo ngày để bổ sung vào KPI và biểu đồ phía trên. Trùng ngày và cùng chỉ số sẽ ưu tiên dữ liệu nhập, không cộng hai nguồn. Không dùng dữ liệu theo ngày để suy ra số khách riêng biệt toàn kỳ hoặc phiên.</p></div>'+
-       '<button type="button" class="ip-behavior-import">Nhập Cloudflare CSV</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
+       '<p>Nhập CSV Cloudflare theo ngày hoặc CSV nhật ký phiên (849 dòng / 511 mã khách). Hệ thống tự nhận diện loại file và đưa vào biểu đồ, không cộng trùng cùng ngày.</p></div>'+
+       '<button type="button" class="ip-behavior-import">Nhập CSV lịch sử</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
       '<div class="ip-behavior-mini"><span>Ngày đã nhập: <b data-historical="days">—</b></span>'+
         '<span>Tổng lượt xem trang/ngày: <b data-historical="views">—</b></span>'+
         '<span>Tổng khách duy nhất theo ngày: <b data-historical="visitors">—</b></span></div>'+
@@ -205,16 +205,23 @@
       const file=input.files?.[0];if(!file)return;
       pick.disabled=true;
       try{
-        if(file.size>16000)throw Error('CSV quá lớn: tối đa 16 KB.');
-        const rows=parseHistoryCSV(await file.text());
-        const response=await fetch('/api/admin/behavior/import-history',{
+        const csv=await file.text();
+        const isSessions=isSessionHistoryCSV(csv);
+        if(file.size>(isSessions?120000:16000)){
+          throw Error(isSessions?'CSV phiên quá lớn: tối đa 120 KB.':'CSV Cloudflare quá lớn: tối đa 16 KB.');
+        }
+        const rows=isSessions?parseSessionsCSV(csv):parseHistoryCSV(csv);
+        const response=await fetch(isSessions?'/api/admin/behavior/import-sessions':'/api/admin/behavior/import-history',{
           method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({source:'cloudflare',rows})
+          body:JSON.stringify({source:isSessions?'imprint-workbook':'cloudflare',rows})
         });
-        const json=await response.json();
-        if(!response.ok)throw Error(json.error||'Không nhập được dữ liệu.');
+        let json;
+        try{json=await response.json()}catch{throw Error('Máy chủ trả về dữ liệu không hợp lệ (HTTP '+response.status+').')}
+        if(!response.ok)throw Error(json.error||'Không nhập được dữ liệu (HTTP '+response.status+').');
         await load(section);
-        section.querySelector('.ip-behavior-status').textContent='Đã cập nhật '+json.imported+' ngày từ CSV Cloudflare.';
+        section.querySelector('.ip-behavior-status').textContent=isSessions
+          ?'Đã khôi phục '+fmt(json.imported)+' phiên, '+fmt(json.visitors)+' khách riêng biệt từ nhật ký CSV.'
+          :'Đã cập nhật '+json.imported+' ngày từ CSV Cloudflare.';
       }catch(e){section.querySelector('.ip-behavior-status').textContent=e.message}
       finally{pick.disabled=false;input.value=''}
     });
@@ -239,6 +246,11 @@
       finally{sessionButton.disabled=false;sessionFile.value=''}
     });
     load(section);
+  }
+  function isSessionHistoryCSV(csv){
+    const first=csv.replace(/^\uFEFF/,'').split(/\r?\n/,1)[0];
+    const headers=first.toLowerCase().split(',').map(x=>x.trim().replace(/["']/g,''));
+    return headers.includes('session_id')&&headers.includes('visitor_id');
   }
   function parseSessionsCSV(csv){
     const lines=csv.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(Boolean);
