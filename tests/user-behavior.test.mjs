@@ -222,6 +222,14 @@ test('admin behavior client parses as valid JavaScript with an ImPrint-matching 
   assert.match(source,/isSessionHistoryCSV/);
   assert.match(source,/imprint-workbook/);
   assert.match(source,/Nhập CSV lịch sử/);
+  // Historical ingestion remains wired; the requested internal rows are
+  // not visible in the ordinary admin presentation.
+  assert.match(source,/ip-behavior-external" hidden style="display:none".*Lịch sử Cloudflare Analytics/);
+  assert.match(source,/ip-behavior-mini" hidden style="display:none".*Phiên khôi phục:/);
+  assert.match(source,/ip-behavior-session-import/);
+  assert.match(source,/data-recovered="visitors"/);
+  assert.doesNotMatch(source,/Đã khôi phục '\+recovered\.sessions/);
+
   assert.match(source,/data-chart="mergedPageViews"/);
   assert.match(source,/data-chart="mergedDailyVisitors"/);
   assert.match(source,/Đồng bộ Thống kê kinh doanh/);
