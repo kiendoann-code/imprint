@@ -70,3 +70,16 @@ test('recovered delivered orders appear in the SAME KPIs, charts and order lists
   assert.equal(deduped.recovery.orders,0);
   env.db.close();
 });
+
+test('admin hides the obsolete recovery panel while retaining merged statistics and orders',async()=>{
+  const fs=await import('node:fs');
+  const client=fs.readFileSync('src/client-api.js','utf8');
+  const analytics=fs.readFileSync('src/admin-sales.mjs','utf8');
+  const backend=fs.readFileSync('src/backend.mjs','utf8');
+  assert.equal(client.includes('renderRecoveredOrdersPanel()'),false);
+  assert.equal(client.includes('imprint-recovered-orders'),false);
+  assert.equal(client.includes('Khôi phục và gộp vào thống kê đơn hàng ImPrint'),false);
+  assert.match(analytics,/mergeRecoveredAnalytics/);
+  assert.match(analytics,/getMergedOrderPage/);
+  assert.match(backend,/getMergedBootstrapOrders/);
+});
