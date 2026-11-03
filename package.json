@@ -10,7 +10,6 @@
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "deploy": "npm run build:cloudflare && npx wrangler deploy",
     "db:migrate": "npx wrangler d1 migrations apply imprint-db --remote",
-    "postinstall": "npm run build:cloudflare",
     "build:local": "node scripts/build.mjs"
   },
   "devDependencies": {
