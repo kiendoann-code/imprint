@@ -134,7 +134,7 @@ async function report(db,days){
     mergedMap.set(r.day,combined);
   }
   const mergedDaily=[...mergedMap.values()].sort((a,b)=>a.day.localeCompare(b.day));
-  const historicalLog=await db.prepare("SELECT payload FROM behavior_recovered_log WHERE source='imprint-workbook'").first();
+  const historicalLog=await db.prepare("SELECT payload FROM behavior_recovered_log WHERE source='imprint-workbook'").bind().first();
   const recoveredRows=historicalLog?JSON.parse(historicalLog.payload):[];
   const covered=new Set(),historyVisitors=new Set(),historyDaily=new Map();
   const historyTotals={sessions:0,pageViews:0,engagedMs:0,bounces:0,scrollSum:0,conversions:0,addToCart:0};
