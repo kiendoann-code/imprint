@@ -2,6 +2,20 @@
 
 Database đã tạo: `imprint-db`, ID `a8cad2d0-fb18-43ff-bbb3-b6fa6d92bb10`. Cấu hình dùng binding `DB`, vì backend truy cập `env.DB`.
 
+## Cloudflare Workers Builds (tự triển khai từ GitHub)
+
+Khi kết nối GitHub với Worker hiện tại, vào **Settings > Build** và kiểm tra:
+
+- **Git repository:** `kiendoann-code/imprint`, **Production branch:** `main`
+- **Root directory:** `/` (gốc repository)
+- **Build command:** `npm run build:cloudflare` hoặc `npm run build`
+- **Deploy command:** `npx wrangler deploy`
+- **Node.js:** phiên bản 24 (theo `package.json`); đặt `NODE_VERSION=24` nếu trước đó có tùy chỉnh cũ.
+
+**Không** đặt `npm run deploy` trong Deploy command khi đã chạy Build command: lệnh `deploy` vốn bao gồm build, sẽ xây dựng lần nữa. Không chạy build trong `postinstall`: tự động cài thư viện là một bước riêng.
+
+Nếu Cloudflare báo **Run failed**, xem **Deployments > View Build History > chọn lần failed > Build logs**. Kiểm tra dòng `ERROR` đầu tiên, phân biệt lỗi install/build với upload/auth/quota. Các bài test trên GitHub không thay thế log Cloudflare. Không chạy migration dữ liệu hay xóa D1/R2 để sửa build.
+
 ## Cài bản cập nhật
 
 Lưu `ImPrint-Cloudflare-Patch.zip` vào Downloads. Mở PowerShell tại `C:\Projects\ImPrint-VSCode`, dừng server cũ bằng Ctrl+C nếu đang chạy.
