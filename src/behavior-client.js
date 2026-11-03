@@ -129,6 +129,7 @@
       '.ip-behavior-chart{height:110px;border-bottom:1px solid #e7dcd5;display:flex;align-items:flex-end;gap:2px}',
       '.ip-behavior-bar{flex:1;min-width:1px;background:#9b7770;border-radius:3px 3px 0 0}',
       '.ip-behavior-bar.is-order{background:#d1a9a0}',
+      '.ip-behavior-bar.is-historical{background:#567a70}',
       '.ip-behavior-external{margin-top:18px;padding:16px 18px;border-radius:14px;background:#faf7f3;border:1px solid var(--line,#e8dfd9)}',
       '.ip-behavior-external-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}',
       '.ip-behavior-external strong{display:block;font-size:13px;color:#463936}',
@@ -144,8 +145,10 @@
     document.head.appendChild(sheet);
   }
   const metrics=[
-    ['sessions','Phiên truy cập','Đo từ ngày bật'],
-    ['visitors','Khách truy cập','Ẩn danh · từ ngày bật'],
+    ['mergedPageViews','Lượt xem trang','Đã gộp CSV + đo trực tiếp theo ngày'],
+    ['mergedDailyVisitors','Tổng khách theo từng ngày','Có thể trùng khách giữa các ngày'],
+    ['sessions','Phiên truy cập','Đo trực tiếp · chưa gồm phiên CSV'],
+    ['visitors','Khách riêng biệt (đo trực tiếp)','Không gồm khách nhập theo ngày'],
     ['pageViewsPerSession','Trang / phiên','Đo từ ngày bật'],
     ['avgSessionSeconds','Thời gian hoạt động','Đo từ ngày bật'],
     ['bounceRate','Tỷ lệ thoát','Đo từ ngày bật'],
@@ -163,7 +166,7 @@
     section.setAttribute('aria-label','Phân tích hành vi người dùng ImPrint');
     section.innerHTML='<div class="ip-behavior-top"><div><div class="ip-behavior-kicker">IMPRINT / QUẢN TRỊ / BÁO CÁO</div>'+
       '<h2>Hành vi khách truy cập</h2>'+
-      '<p class="ip-behavior-sub">Thống kê ẩn danh theo hoạt động thực tế. Số liệu đơn hàng lấy trực tiếp từ hệ thống ImPrint.</p></div>'+
+      '<p class="ip-behavior-sub">Lượt xem trang và khách theo ngày được gộp từ CSV lịch sử với dữ liệu trực tiếp, ưu tiên CSV khi trùng ngày. Phiên, khách riêng biệt toàn kỳ và chỉ số tương tác chỉ tính khi có dữ liệu đo trực tiếp; đơn hàng lấy từ D1.</p></div>'+
       '<div class="ip-behavior-filters" role="group" aria-label="Chọn khoảng thời gian">'+
       [7,30,90].map(d=>'<button type="button" class="ip-behavior-filter" data-days="'+d+'" aria-pressed="'+(selectedDays===d)+'">'+d+' ngày</button>').join('')+
       '<button type="button" class="ip-behavior-refresh" aria-label="Làm mới báo cáo" title="Làm mới">↻</button></div></div>'+
@@ -171,10 +174,12 @@
         '<div class="ip-behavior-label">'+label+'</div><span class="ip-behavior-tag">'+tag+'</span></div>').join('')+'</div>'+
       '<p class="ip-behavior-status" role="status" aria-live="polite">Đang lấy dữ liệu…</p>'+
       '<div class="ip-behavior-charts">'+
+       '<div class="ip-behavior-chart-card"><h3>Lượt xem trang theo ngày · đã gộp</h3><p class="ip-behavior-hint">Màu xanh: CSV lịch sử; màu nâu: đo trực tiếp. Trùng ngày chọn CSV, không cộng đôi.</p><div class="ip-behavior-chart" data-chart="mergedPageViews" role="img"></div></div>'+
+       '<div class="ip-behavior-chart-card"><h3>Khách truy cập theo ngày · đã gộp</h3><p class="ip-behavior-hint">Lượt khách riêng biệt từng ngày có thể trùng nhau giữa các ngày; không phải khách riêng biệt toàn kỳ.</p><div class="ip-behavior-chart" data-chart="mergedDailyVisitors" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Phiên truy cập theo ngày</h3><p class="ip-behavior-hint">Dữ liệu đo lường trực tiếp, không ước tính lịch sử</p><div class="ip-behavior-chart" data-chart="sessions" role="img"></div></div>'+
        '<div class="ip-behavior-chart-card"><h3>Đơn hàng theo ngày</h3><p class="ip-behavior-hint">Lịch sử đơn hàng xác thực trong D1</p><div class="ip-behavior-chart" data-chart="orders" role="img"></div></div></div>'+
       '<div class="ip-behavior-external"><div class="ip-behavior-external-head"><div><strong>Lịch sử Cloudflare Analytics</strong>'+
-       '<p>Nhập dữ liệu xuất từ Cloudflare Web Analytics để bổ sung số lượt xem trang và lượt khách theo ngày. Không trộn vào chỉ số phiên truy cập.</p></div>'+
+       '<p>Nhập thống kê Cloudflare theo ngày để bổ sung vào KPI và biểu đồ phía trên. Trùng ngày và cùng chỉ số sẽ ưu tiên dữ liệu nhập, không cộng hai nguồn. Không dùng dữ liệu theo ngày để suy ra số khách riêng biệt toàn kỳ hoặc phiên.</p></div>'+
        '<button type="button" class="ip-behavior-import">Nhập Cloudflare CSV</button><input type="file" hidden accept=".csv,text/csv" class="ip-behavior-file"></div>'+
       '<div class="ip-behavior-mini"><span>Ngày đã nhập: <b data-historical="days">—</b></span>'+
         '<span>Tổng lượt xem trang/ngày: <b data-historical="views">—</b></span>'+
@@ -236,16 +241,16 @@
   function duration(s){const n=Math.max(0,Math.round(s||0));return n>=60?Math.floor(n/60)+' phút '+String(n%60).padStart(2,'0')+' giây':n+' giây'}
   function drawChart(el,source,key,days,klass=''){
     el.replaceChildren();
-    const map=new Map((source||[]).map(item=>[item.day,Number(item[key])||0]));
+    const map=new Map((source||[]).map(item=>[item.day,item]));
     const current=new Date(Date.now()+7*3600000);
     const midnight=Date.UTC(current.getUTCFullYear(),current.getUTCMonth(),current.getUTCDate());
     const values=[];
-    for(let i=days-1;i>=0;i--){const day=new Date(midnight-i*DAY).toISOString().slice(0,10);values.push({day,value:map.get(day)||0})}
+    for(let i=days-1;i>=0;i--){const day=new Date(midnight-i*DAY).toISOString().slice(0,10);const item=map.get(day);values.push({day,value:Number(item?.[key])||0,imported:!!item?.[key==='pageViews'?'importedPageViews':'importedVisitors']})}
     const ceiling=Math.max(1,...values.map(v=>v.value));
     for(const entry of values){
-      const bar=document.createElement('div');bar.className='ip-behavior-bar '+klass;
+      const bar=document.createElement('div');bar.className='ip-behavior-bar '+klass+(entry.imported?' is-historical':'');
       bar.style.height=(entry.value?Math.max(4,entry.value/ceiling*100):0)+'%';
-      bar.title=entry.day+': '+fmt(entry.value);el.appendChild(bar);
+      bar.title=entry.day+': '+fmt(entry.value)+(entry.imported?' · CSV lịch sử':' · đo trực tiếp');el.appendChild(bar);
     }
     el.setAttribute('aria-label',values.map(x=>x.day+': '+x.value).join('; '));
   }
@@ -257,8 +262,9 @@
       if(!response.ok)throw Error(response.status===403?'Vui lòng đăng nhập lại bằng tài khoản quản trị.':'Không lấy được thống kê (HTTP '+response.status+').');
       const data=await response.json();
       if(requestId!==id||!section.isConnected)return;
-      const k=data.kpis,history=data.historicalOrders,external=data.importedAnalytics;
+      const k=data.kpis,history=data.historicalOrders,external=data.importedAnalytics,merged=data.mergedAnalytics;
       const values={
+        mergedPageViews:fmt(merged.pageViews),mergedDailyVisitors:fmt(merged.dailyVisitors),
         sessions:fmt(k.sessions),visitors:fmt(k.visitors),
         pageViewsPerSession:fmt(k.pagesPerSession,2),avgSessionSeconds:duration(k.avgSessionSeconds),
         bounceRate:fmt(k.bounceRate,1)+'%',avgScrollDepth:fmt(k.avgScrollDepth,1)+'%',
@@ -266,12 +272,14 @@
         orders:fmt(history.orders),buyers:fmt(history.buyers)
       };
       for(const [key,value]of Object.entries(values))section.querySelector('[data-value="'+key+'"]').textContent=value;
+      drawChart(section.querySelector('[data-chart="mergedPageViews"]'),merged.daily,'pageViews',days);
+      drawChart(section.querySelector('[data-chart="mergedDailyVisitors"]'),merged.daily,'visitors',days);
       drawChart(section.querySelector('[data-chart="sessions"]'),data.daily,'sessions',days);
       drawChart(section.querySelector('[data-chart="orders"]'),history.daily,'orders',days,'is-order');
       section.querySelector('[data-historical="days"]').textContent=fmt(external.importedDays);
       section.querySelector('[data-historical="views"]').textContent=external.importedDays?fmt(external.pageViews):'Chưa có dữ liệu';
       section.querySelector('[data-historical="visitors"]').textContent=external.importedDays?fmt(external.dailyVisitors):'Chưa có dữ liệu';
-      status.textContent='Báo cáo '+days+' ngày · Đơn hàng lấy từ D1; hành vi và thêm giỏ bắt đầu từ khi bật theo dõi. Không suy diễn dữ liệu cũ.';
+      status.textContent='Báo cáo '+days+' ngày · Lượt xem trang và khách theo ngày đã gộp '+merged.importedDays+' ngày CSV với dữ liệu trực tiếp; '+merged.overlapDays+' ngày trùng nguồn được ưu tiên CSV. Phiên và hành vi vẫn lấy từ đo trực tiếp, đơn hàng lấy từ D1.';
     }catch(e){if(requestId===id&&section.isConnected)status.textContent=e.message}
   }
   if(typeof admin==='function'){
