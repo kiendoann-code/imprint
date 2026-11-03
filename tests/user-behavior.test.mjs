@@ -92,9 +92,24 @@ test('Cloudflare CSV backfill stores verified aggregates separately and is admin
   assert.equal(report.importedAnalytics.importedDays,1);
   assert.equal(report.importedAnalytics.pageViews,78);
   assert.equal(report.importedAnalytics.dailyVisitors,23);
+  assert.equal(report.mergedAnalytics.pageViews,78);
+  assert.equal(report.mergedAnalytics.dailyVisitors,23);
+  assert.equal(report.mergedAnalytics.importedDays,1);
   assert.equal(report.kpis.sessions,0);
   assert.equal(report.kpis.visitors,0);
   assert.equal(report.kpis.addToCart,0);
+  // Same-day Cloudflare counts override first-party counts rather than sum them.
+  const guest=sample();
+  assert.equal((await worker.fetch(request('/api/behavior','POST',guest),env,{})).status,202);
+  const overlap=await(await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json();
+  assert.equal(overlap.kpis.sessions,1);
+  assert.equal(overlap.kpis.visitors,1);
+  assert.equal(overlap.mergedAnalytics.pageViews,78);
+  assert.equal(overlap.mergedAnalytics.dailyVisitors,23);
+  assert.equal(overlap.mergedAnalytics.overlapDays,1);
+  assert.equal(overlap.mergedAnalytics.daily.length,1);
+  assert.equal(overlap.mergedAnalytics.daily[0].importedPageViews,true);
+  assert.equal(overlap.mergedAnalytics.daily[0].importedVisitors,true);
   await assert.rejects(handleBehavior(request('/api/admin/behavior/import-history','POST',
     {source:'cloudflare',rows:[{day:'2020-01-01',visitors:1,pageViews:1}]}),env,admin),{status:400});
   await assert.rejects(handleBehavior(request('/api/admin/behavior/import-history','POST',
@@ -106,6 +121,8 @@ test('admin behavior client parses as valid JavaScript with an ImPrint-matching 
   const source=fs.readFileSync('src/behavior-client.js','utf8');
   assert.doesNotThrow(()=>new Function(source));
   assert.match(source,/ip-behavior-import/);
+  assert.match(source,/data-chart="mergedPageViews"/);
+  assert.match(source,/data-chart="mergedDailyVisitors"/);
   assert.match(source,/background:#fffdfa/);
   assert.match(source,/data-value/);
   assert.match(source,/ignoreNextCartPersist/);
