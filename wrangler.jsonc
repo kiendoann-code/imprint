@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "imprint-store",
+  "name": "imprint",
   "main": "dist-cloudflare/worker/index.js",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
