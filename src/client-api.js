@@ -38,7 +38,7 @@ const checkoutBeforeBackend=checkout;checkout=function(){checkoutBeforeBackend()
 let orderRequestKey=null;placeOrder=async function(){if(busy||!user||!data.cart.length)return;busy=true;$('#placeBtn').disabled=true;try{await persist();orderRequestKey||=crypto.randomUUID();const shipping=Object.fromEntries(['fullName','phone','city','ward','address','note'].map(k=>[k,$('#'+k).value.trim()]));const order=await api('/api/orders','POST',{shipping,coupon,cartRevision,requestKey:orderRequestKey,behaviorSessionId:window.ImprintBehavior?.sessionId()||null,behaviorVisitorId:window.ImprintBehavior?.visitorId()||null});orderRequestKey=null;coupon='';await refreshBackend();go('account');toast('Đã gửi đơn '+order.id+' đến ImPrint.')}catch(e){toast(e.message);if($('#placeBtn'))$('#placeBtn').disabled=false}finally{busy=false}};
 const adminBeforeBackend=admin;admin=function(){if(user?.role==='admin'){adminBeforeBackend();const notice=app.querySelector('.notice');if(notice)notice.textContent='Nội dung được lưu trên máy chủ và hiển thị cho khách. Đơn hàng, ảnh gốc và thiết kế được lưu chung.';
 if(user.id==='site-owner')app.insertAdjacentHTML('beforeend',`<section class="wrap section"><div class="panel"><details><summary><strong>Tài khoản quản trị bổ sung</strong></summary><p class="muted">Chỉ quản trị chính có thể cấp tài khoản. Mỗi tài khoản có quyền quản trị cửa hàng và mật khẩu riêng.</p><form onsubmit="createSecondaryImprintAdmin(event)"><label>Email quản trị</label><input type="email" name="email" required autocomplete="off" placeholder="admin@example.com"><label>Tên hiển thị</label><input type="text" name="name" maxlength="80" placeholder="Quản trị"><label>Mật khẩu (14–128 ký tự)</label><input type="password" name="password" minlength="14" maxlength="128" required autocomplete="new-password"><button type="submit" class="button primary">Tạo tài khoản admin</button></form></details></div></section>`);
-renderImprintOrderQualityPanel();renderRecoveredOrdersPanel();return}app.innerHTML=`<div class="wrap section admin-login-layout"><div><div class="eyebrow">IMPRINT · QUẢN TRỊ</div><h1>Quản lý cửa hàng.</h1><p>Đăng nhập bằng email và mật khẩu quản trị để quản lý cửa hàng.</p></div><div class="panel"><h2>Đăng nhập quản trị</h2><p>Chỉ tài khoản chủ website có quyền truy cập.</p><button class="button primary" onclick="auth(false)">Đăng nhập quản trị</button><p class="muted">Tài khoản quản trị do chủ cửa hàng thiết lập.</p></div></div>`};
+renderImprintOrderQualityPanel();return}app.innerHTML=`<div class="wrap section admin-login-layout"><div><div class="eyebrow">IMPRINT · QUẢN TRỊ</div><h1>Quản lý cửa hàng.</h1><p>Đăng nhập bằng email và mật khẩu quản trị để quản lý cửa hàng.</p></div><div class="panel"><h2>Đăng nhập quản trị</h2><p>Chỉ tài khoản chủ website có quyền truy cập.</p><button class="button primary" onclick="auth(false)">Đăng nhập quản trị</button><p class="muted">Tài khoản quản trị do chủ cửa hàng thiết lập.</p></div></div>`};
 function renderImprintOrderQualityPanel(){
   if(document.getElementById('imprint-order-quality'))return;
   const section=document.createElement('section');
@@ -3344,60 +3344,3 @@ init=async function(){app.innerHTML='<div class="wrap section"><p>Đang mở ImP
 
 
 // The recovered archive is deliberately separate from live order processing.
-function renderRecoveredOrdersPanel(){
-  if(document.getElementById('imprint-recovered-orders'))return;
-  const section=document.createElement('section');
-  section.id='imprint-recovered-orders';section.className='wrap section';
-  section.innerHTML='<div class="panel"><h2>Khôi phục và gộp vào thống kê đơn hàng ImPrint</h2>'+
-    '<p class="muted">Khi nhập, 99 đơn được cộng vào tổng đơn, doanh thu đã giao, biểu đồ theo ngày/giờ, trạng thái đơn và khách hàng ở trang quản trị hiện tại; không ghi đè đơn cũ hay thay đổi tồn kho. Email @example.com trong file nguồn không phải địa chỉ liên hệ đã xác minh.</p>'+
-    '<p data-archive-summary>Đang tải đơn hàng lịch sử…</p>'+
-    '<div data-archive-import><label for="imprintArchiveFile">Tệp JSON khôi phục</label><input id="imprintArchiveFile" type="file" accept=".json,application/json"><button type="button" class="button primary" data-archive-submit>Gộp 99 đơn vào thống kê hiện tại</button></div>'+
-    '<div style="overflow:auto"><table><thead><tr><th>Mã đơn</th><th>Đặt lúc</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th><th>Đã giao</th></tr></thead><tbody data-archive-rows></tbody></table></div>'+
-    '<div data-archive-pages style="display:flex;align-items:center;gap:1rem;margin-top:1rem"></div>'+
-    '<details><summary>Khách hàng mua gần đây trong dữ liệu lịch sử</summary><div style="overflow:auto"><table><thead><tr><th>Khách hàng</th><th>Email nguồn</th><th>Đơn</th><th>Giá trị</th><th>Gần nhất</th></tr></thead><tbody data-archive-customers></tbody></table></div></details></div>';
-  // Keep the restore panel visible immediately on entering Admin rather than below all catalog/settings sections.
-  app.prepend(section);
-  if(user?.id!=='site-owner'){
-    section.querySelector('[data-archive-import]').hidden=true;
-    section.querySelector('[data-archive-summary]').textContent='Chỉ tài khoản quản trị chính có quyền nhập đơn lịch sử. Tài khoản hiện tại chỉ được xem.';
-  }
-  const money=v=>new Intl.NumberFormat('vi-VN').format(Number(v)||0)+'đ';
-  const time=v=>new Date(v).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'});
-  function addRow(tbody,fields){const tr=document.createElement('tr');for(const field of fields){const td=document.createElement('td');td.textContent=String(field??'—');tr.appendChild(td)}tbody.appendChild(tr)}
-  function error(err){if(section.isConnected)section.querySelector('[data-archive-summary]').textContent=err.message||'Không tải được dữ liệu.'}
-  async function show(page=1){
-    const report=await api('/api/admin/recovered-orders?page='+page);
-    if(!section.isConnected)return;
-    section.querySelector('[data-archive-summary]').textContent=report.total?
-      report.summary.orders+' đơn đã giao · '+report.summary.customers+' khách theo email nguồn · '+money(report.summary.revenueVnd)+' (dữ liệu lịch sử)':
-      'Chưa nhập dữ liệu lịch sử. Hãy chọn tệp JSON khôi phục.';
-    section.querySelector('[data-archive-import]').hidden=report.total>0 || user?.id!=='site-owner';
-    const list=section.querySelector('[data-archive-rows]');list.replaceChildren();
-    for(const o of report.orders)addRow(list,[o.id,time(o.placedAt),o.customerName,o.productSummary,o.quantity,money(o.valueVnd)]);
-    const customers=section.querySelector('[data-archive-customers]');customers.replaceChildren();
-    for(const c of report.customers)addRow(customers,[c.name,c.email,c.orders,money(c.revenueVnd),time(c.lastOrder)]);
-    const pages=section.querySelector('[data-archive-pages]');pages.replaceChildren();
-    if(report.pages>1){
-      const prev=document.createElement('button'),next=document.createElement('button'),label=document.createElement('span');
-      prev.textContent='Trang trước';next.textContent='Trang sau';label.textContent='Trang '+report.page+'/'+report.pages;
-      prev.disabled=report.page<=1;next.disabled=report.page>=report.pages;
-      prev.onclick=()=>show(report.page-1).catch(error);next.onclick=()=>show(report.page+1).catch(error);
-      pages.append(prev,label,next);
-    }
-  }
-  section.querySelector('[data-archive-submit]').onclick=async()=>{
-    const file=section.querySelector('#imprintArchiveFile').files?.[0],button=section.querySelector('[data-archive-submit]');
-    if(!file){toast('Hãy chọn tệp JSON khôi phục.');return}
-    if(file.size>250000){toast('Tệp khôi phục quá lớn.');return}
-    button.disabled=true;
-    try{
-      const payload=JSON.parse(await file.text());
-      const result=await api('/api/admin/recovered-orders/import','POST',payload);
-      toast(result.alreadyImported?'99 đơn đã nằm trong thống kê hiện có.':'Đã gộp '+result.orders+' đơn vào thống kê hiện có.');
-      await refreshBackend();
-      go('admin');
-    }catch(e){toast(e.message||'Không nhập được dữ liệu.')}
-    finally{button.disabled=false}
-  };
-  show().catch(error);
-}
