@@ -90,6 +90,15 @@ async function listArchive(db,params){
   const total=Number(summary.orders);
   return {source:'recovered_archive',readOnly:true,verification:'user_attested_internal_consistency_only',emailVerification:'not_verified_nonroutable',range:{from,to},summary,daily,customers,orders:found.map(o=>({...o,items:JSON.parse(o.itemsJson),itemsJson:undefined})),total,page,pages:Math.max(1,Math.ceil(total/20))};
 }
+// The operational dashboard may read recovered rows after a verified import.
+export async function readRecoveredRows(db,fromMs=0,toMs=8640000000000000){
+  await ensureArchive(db);
+  return all(db,`SELECT r.order_id id,r.placed_at placedAt,r.placed_at_ms placedAtMs,r.placed_date day,r.customer_name customerName,r.customer_email customerEmail,r.quantity,r.value_vnd valueVnd,r.product_summary productSummary,r.items_json itemsJson,r.batch_id batchId
+    FROM imprint_recovered_orders r
+    WHERE r.placed_at_ms>=? AND r.placed_at_ms<?
+      AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.id=r.order_id)
+    ORDER BY r.placed_at_ms DESC,r.order_id DESC`,fromMs,toMs);
+}
 export async function handleRecoveredOrders(req,env,user){
   const path=new URL(req.url).pathname;
   if(path!=='/api/admin/recovered-orders'&&path!=='/api/admin/recovered-orders/import')return null;
