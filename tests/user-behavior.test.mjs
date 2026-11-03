@@ -155,10 +155,32 @@ test('recovered sessions restore period uniques and do not double count same-day
   env.db.close();
 });
 
+test('bulk recovery accepts 849 historical sessions with 511 unique visitors',async()=>{
+  const env=environment(),admin={role:'admin'};
+  const day=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const rows=Array.from({length:849},(_,i)=>({
+    day,sessionId:'IM-S'+String(i+1).padStart(6,'0'),
+    visitorId:'KH-'+String(i%511+1).padStart(4,'0'),
+    pageViews:4,engagementSeconds:546,bounced:0,scrollDepth:66,
+    addToCart:0,converted:0
+  }));
+  const response=await handleBehavior(request('/api/admin/behavior/import-sessions','POST',
+    {source:'imprint-workbook',rows}),env,admin);
+  assert.equal(response.status,200);
+  assert.deepEqual((({imported,visitors})=>({imported,visitors}))(await response.json()),{imported:849,visitors:511});
+  const analytics=await(await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json();
+  assert.equal(analytics.combinedKpis.sessions,849);
+  assert.equal(analytics.combinedKpis.visitors,511);
+  env.db.close();
+});
+
 test('admin behavior client parses as valid JavaScript with an ImPrint-matching palette',()=>{
   const source=fs.readFileSync('src/behavior-client.js','utf8');
   assert.doesNotThrow(()=>new Function(source));
   assert.match(source,/ip-behavior-import/);
+  assert.match(source,/isSessionHistoryCSV/);
+  assert.match(source,/imprint-workbook/);
+  assert.match(source,/Nhập CSV lịch sử/);
   assert.match(source,/data-chart="mergedPageViews"/);
   assert.match(source,/data-chart="mergedDailyVisitors"/);
   assert.match(source,/background:#fffdfa/);
