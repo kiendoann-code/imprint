@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/backend.mjs';
 import {handleBehavior,recordBehaviorConversion} from '../src/user-behavior.mjs';
+import {salesAnalytics} from '../src/admin-sales.mjs';
+import {readRecoveredRows} from '../src/recovered-orders.mjs';
 import {environment} from './harness.mjs';
 import fs from 'node:fs';
 
@@ -75,6 +77,45 @@ test('cart add events are idempotent and historic D1 orders remain separate from
   const week=await (await handleBehavior(request('/api/admin/behavior?days=7'),env,admin)).json();
   assert.equal(week.historicalOrders.orders,0);
   assert.equal(week.kpis.addToCart,2);
+  env.db.close();
+});
+
+test('behavior orders and buyer profiles match business report including recovered orders, same date range and ID deduplication',async()=>{
+  const env=environment(),admin={role:'admin'};
+  const today=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const placed=today+'T09:15:00+07:00',when=Date.parse(placed);
+  const customer='legacy-source@example.com';
+  const userId=crypto.randomUUID();
+  env.db.prepare('INSERT INTO users(id,email,name,salt,password_hash,created_at) VALUES(?,?,?,?,?,?)')
+    .run(userId,'buyer@test.local','Người mua','salt','hash',when);
+  const order={id:'ACTIVE-01',owner:'buyer@test.local',status:5,items:[],sub:205000,discount:0,total:205000};
+  env.db.prepare('INSERT INTO orders(id,user_id,request_key,body,status,created_at) VALUES(?,?,?,?,?,?)')
+    .run(order.id,userId,'unique-checkout-key',JSON.stringify(order),5,when);
+  // Creates archival tables before placing records. Archive stays read-only.
+  await readRecoveredRows(env.DB);
+  env.db.prepare('INSERT INTO imprint_recovery_batches(batch_id,source_sha256,data_sha256,imported_at,order_count,revenue_vnd,period_start,period_end,verification_scope) VALUES(?,?,?,?,?,?,?,?,?)')
+    .run('test-recovery','source-hash','data-hash',new Date().toISOString(),3,540000,today,today,'test-only');
+  for(const id of ['RECOVERED-01','RECOVERED-02','ACTIVE-01']){
+    env.db.prepare('INSERT INTO imprint_recovered_orders(order_id,batch_id,placed_date,placed_at,placed_at_ms,customer_name,customer_email,quantity,value_vnd,product_summary,items_json,source_row) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(id,'test-recovery',today,placed,when,'Khách lịch sử',customer,1,180000,'Baby Tee',
+        JSON.stringify([{sku:'BABY',name:'Baby Tee',color:'Đen',quantity:1,unitPrice:180000,lineTotal:180000}]),1);
+  }
+  const behavior=(await (await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json());
+  const direct=await salesAnalytics(env.DB,new URLSearchParams(behavior.historicalOrders.range));
+  assert.equal(direct.kpis.orders,3);
+  assert.equal(direct.kpis.buyers,2);
+  assert.equal(direct.recovery.orders,2);
+  assert.equal(behavior.historicalOrders.orders,direct.kpis.orders);
+  assert.equal(behavior.historicalOrders.buyers,direct.kpis.buyers);
+  assert.equal(behavior.historicalOrders.recoveredOrders,2);
+  assert.deepEqual(behavior.historicalOrders.daily,
+    direct.daily.map(({day,orders})=>({day,orders})));
+  assert.equal(behavior.historicalOrders.range.from,direct.range.from);
+  assert.equal(behavior.historicalOrders.range.to,direct.range.to);
+  // A period not containing the sales date must exclude archival and live orders.
+  const before=new Date(Date.parse(today+'T00:00:00Z')-DAY).toISOString().slice(0,10);
+  const out=await salesAnalytics(env.DB,new URLSearchParams({from:before,to:before}));
+  assert.equal(out.kpis.orders,0);
   env.db.close();
 });
 
@@ -183,6 +224,7 @@ test('admin behavior client parses as valid JavaScript with an ImPrint-matching 
   assert.match(source,/Nhập CSV lịch sử/);
   assert.match(source,/data-chart="mergedPageViews"/);
   assert.match(source,/data-chart="mergedDailyVisitors"/);
+  assert.match(source,/Đồng bộ Thống kê kinh doanh/);
   assert.match(source,/background:#fffdfa/);
   assert.match(source,/data-value/);
   assert.match(source,/ignoreNextCartPersist/);
