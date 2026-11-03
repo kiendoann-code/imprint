@@ -59,6 +59,14 @@ fs.writeFileSync(output+'/public/static/imprint-performance-20261021-v4.json',JS
   imageOptimization:{files:imageOptimization.stats.length,bytesSaved:imageOptimization.bytesSaved},
   features:['lazy-design-studio-mockups','lazy-studio-fonts','preload-original-hero','cacheable-deferred-app-js','syntax-and-whitespace-minified-js','content-addressed-webp-image-optimization','viewport-gated-homepage-video','ssr-home-no-unnecessary-product-image-fetches','memoized-worker-d1-initialization']
 }));
+// Lightweight deployment probe for verifying the production Worker actually
+// serves the product gallery fallback release, independent of browser caches.
+fs.writeFileSync(output+'/public/static/imprint-gallery-fix-20261102.json',JSON.stringify({
+  release:'imprint-gallery-fix-20261102',
+  fallbackToOriginalProductImage:true,
+  avoidsDuplicateRearSlides:true,
+  retriesFailedMockRequests:true
+}));
 fs.writeFileSync(output+'/public/_headers','/static/*\n  Cache-Control: public, max-age=86400\n  X-Content-Type-Options: nosniff\n/\n  Cache-Control: no-cache\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 fs.writeFileSync(output+'/worker/generated.mjs','export const html="";export const builtAssets={};export const seedCatalog='+JSON.stringify(seed)+';');
 fs.copyFileSync('src/backend.mjs',output+'/worker/backend.mjs');
