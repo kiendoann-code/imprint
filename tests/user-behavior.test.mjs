@@ -113,7 +113,7 @@ test('behavior orders and buyer profiles match business report including recover
   assert.equal(behavior.historicalOrders.range.from,direct.range.from);
   assert.equal(behavior.historicalOrders.range.to,direct.range.to);
   // A period not containing the sales date must exclude archival and live orders.
-  const before=new Date(Date.parse(today+'T00:00:00Z')-DAY).toISOString().slice(0,10);
+  const before=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10);
   const out=await salesAnalytics(env.DB,new URLSearchParams({from:before,to:before}));
   assert.equal(out.kpis.orders,0);
   env.db.close();
