@@ -117,6 +117,44 @@ test('Cloudflare CSV backfill stores verified aggregates separately and is admin
   env.db.close();
 });
 
+
+test('recovered sessions restore period uniques and do not double count same-day live activity',async()=>{
+  const env=environment(),admin={role:'admin'};
+  const day=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const base={day,pageViews:3,engagementSeconds:546,bounced:0,scrollDepth:66,addToCart:1,converted:0};
+  const rows=[
+    {...base,sessionId:'IM-S000001',visitorId:'KH-0001'},
+    {...base,sessionId:'IM-S000002',visitorId:'KH-0001',pageViews:2},
+    {...base,sessionId:'IM-S000003',visitorId:'KH-0002',pageViews:4}
+  ];
+  // An existing live session for the same calendar day must not inflate
+  // restored visitor or session totals.
+  assert.equal((await worker.fetch(request('/api/behavior','POST',sample()),env,{})).status,202);
+  const source={source:'imprint-workbook',rows};
+  assert.equal((await worker.fetch(request('/api/admin/behavior/import-sessions','POST',source),env,{})).status,403);
+  let r=await handleBehavior(request('/api/admin/behavior/import-sessions','POST',source),env,admin);
+  assert.equal(r.status,200);
+  assert.equal((await r.json()).visitors,2);
+  await handleBehavior(request('/api/admin/behavior/import-sessions','POST',source),env,admin);
+  const report=await(await handleBehavior(request('/api/admin/behavior?days=30'),env,admin)).json();
+  assert.equal(report.kpis.sessions,1);
+  assert.equal(report.recoveredSessions.sessions,3);
+  assert.equal(report.recoveredSessions.visitors,2);
+  assert.equal(report.combinedKpis.sessions,3);
+  assert.equal(report.combinedKpis.visitors,2);
+  assert.equal(report.combinedKpis.addToCart,3);
+  assert.equal(report.mergedAnalytics.pageViews,9);
+  assert.equal(report.mergedAnalytics.dailyVisitors,2);
+  assert.equal(report.mergedSessionsDaily.length,1);
+  assert.equal(report.mergedSessionsDaily[0].sessions,3);
+  assert.equal(report.combinedKpis.sourceMixed,false);
+  assert.equal((await worker.fetch(request('/api/admin/behavior/import-sessions','POST',
+    {source:'imprint-workbook',rows:[rows[0],rows[0]]}),env,{})).status,403);
+  await assert.rejects(handleBehavior(request('/api/admin/behavior/import-sessions','POST',
+    {source:'imprint-workbook',rows:[rows[0],rows[0]]}),env,admin),{status:400});
+  env.db.close();
+});
+
 test('admin behavior client parses as valid JavaScript with an ImPrint-matching palette',()=>{
   const source=fs.readFileSync('src/behavior-client.js','utf8');
   assert.doesNotThrow(()=>new Function(source));
